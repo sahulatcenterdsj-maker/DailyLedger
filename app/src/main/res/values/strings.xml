@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Daily Ledger</string>
+    <string name="currency_pkr">PKR</string>
+    <string name="app_tagline">Local-first personal finance &amp; ROSCA tracker</string>
+</resources>
