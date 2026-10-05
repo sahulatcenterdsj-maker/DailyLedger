@@ -1,0 +1,80 @@
+package com.sadique.dailyledger.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import com.sadique.dailyledger.ui.isValidDate
+import androidx.compose.ui.unit.dp
+import com.sadique.dailyledger.data.*
+import com.sadique.dailyledger.ui.money
+import com.sadique.dailyledger.ui.parseMinor
+
+@Composable
+fun SavingsScreen(
+    savings: List<SavingEntity>,
+    committeePaid: Long,
+    onAdd: (String, Long, String, String) -> Unit,
+    onDelete: (SavingEntity) -> Unit,
+) {
+    var add by remember { mutableStateOf(false) }
+    val direct = savings.filter { it.kind == "DIRECT" }.sumOf { it.amountMinor }
+    val leftover = savings.filter { it.kind == "LEFTOVER" }.sumOf { it.amountMinor }
+    Scaffold(floatingActionButton = { FloatingActionButton(onClick = { add = true }) { Icon(Icons.Default.Add, null) } }) { p ->
+        LazyColumn(Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            item {
+                Text("Savings", style = MaterialTheme.typography.headlineMedium)
+                Text("Direct savings and leftover money stay separate. Kameti appears only in the combined set-aside total.")
+                Card {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Direct: ${money(direct)}")
+                        Text("Leftover: ${money(leftover)}")
+                        Text("Kameti contributed: ${money(committeePaid)}")
+                        HorizontalDivider()
+                        Text("Total set aside: ${money(direct + leftover + committeePaid)}", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+            items(savings, key = { it.id }) { saving ->
+                Card(Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(14.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(if (saving.kind == "LEFTOVER") "Leftover saving" else "Direct saving")
+                            Text("${saving.date} • ${saving.note}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text(money(saving.amountMinor))
+                        IconButton(onClick = { onDelete(saving) }) { Icon(Icons.Default.Delete, "Delete") }
+                    }
+                }
+            }
+        }
+    }
+    if (add) SavingDialog({ add = false }) { k, a, d, n -> onAdd(k, a, d, n); add = false }
+}
+
+@Composable
+private fun SavingDialog(dismiss: () -> Unit, save: (String, Long, String, String) -> Unit) {
+    var kind by remember { mutableStateOf("DIRECT") }
+    var amount by remember { mutableStateOf("") }
+    var date by remember { mutableStateOf(LedgerRepository.today()) }
+    var note by remember { mutableStateOf("") }
+    AlertDialog(onDismissRequest = dismiss, title = { Text("Add saving") }, text = {
+        Column {
+            Row {
+                FilterChip(kind == "DIRECT", { kind = "DIRECT" }, { Text("Direct") })
+                Spacer(Modifier.width(8.dp))
+                FilterChip(kind == "LEFTOVER", { kind = "LEFTOVER" }, { Text("Leftover") })
+            }
+            OutlinedTextField(amount, { amount = it }, label = { Text("Amount PKR") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+            OutlinedTextField(date, { date = it }, label = { Text("Date YYYY-MM-DD") }, isError = !isValidDate(date), singleLine = true)
+            OutlinedTextField(note, { note = it }, label = { Text("Note") })
+        }
+    }, confirmButton = { Button(enabled = isValidDate(date), onClick = { parseMinor(amount)?.takeIf { it > 0 }?.let { save(kind, it, date.trim(), note) } }) { Text("Save") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
+}

@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/backups/latest {
+      function ownAccount() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      function validBackup() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['formatVersion', 'revision', 'payload', 'contentHash', 'updatedAt'])
+          && data.keys().hasOnly(['formatVersion', 'revision', 'payload', 'contentHash', 'updatedAt'])
+          && data.formatVersion == 1
+          && data.revision is string && data.revision.size() == 36
+          && data.payload is string && data.payload.size() > 0 && data.payload.size() <= 900000
+          && data.contentHash is string && data.contentHash.matches('^[a-f0-9]{64}$')
+          && data.updatedAt == request.time;
+      }
+      allow get: if ownAccount();
+      allow create, update: if ownAccount() && validBackup();
+      allow delete: if ownAccount();
+    }
+    // No public reads, cross-account reads, collection listing or other writes.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
