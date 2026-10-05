@@ -6,10 +6,15 @@ on:
     branches:
       - main
       - master
+      - codex/build-apk-20261005
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout project
@@ -23,6 +28,9 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -30,12 +38,41 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x gradlew
 
+      - name: Test backup core
+        run: bash tests/run-core-tests.sh
+
       - name: Build APK
         run: ./gradlew --no-daemon assembleDebug
+
+      - name: Verify and prepare APK
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, pathlib, re, shutil, subprocess
+          apk = pathlib.Path('app/build/outputs/apk/debug/app-debug.apk')
+          assert apk.is_file(), 'APK was not produced'
+          sdk = pathlib.Path(os.environ['ANDROID_HOME'])
+          versions = sorted((sdk / 'build-tools').glob('*'), key=lambda p: [int(n) for n in re.findall(r'\d+', p.name)])
+          build_tools = next(p for p in reversed(versions) if (p / 'apksigner').exists())
+          signature = subprocess.check_output([str(build_tools / 'apksigner'), 'verify', '--verbose', '--print-certs', str(apk)], text=True)
+          expected_sha1 = 'c6e19da96097e5424a34766e15746edca7c0f707'
+          assert expected_sha1 in signature.lower().replace(':', ''), 'Signing certificate differs from Firebase configuration'
+          badging = subprocess.check_output([str(build_tools / 'aapt'), 'dump', 'badging', str(apk)], text=True)
+          assert "package: name='com.sadique.dailyledger'" in badging, 'Unexpected application ID'
+          output = pathlib.Path('apk-output')
+          output.mkdir(exist_ok=True)
+          target = output / 'DailyLedger.apk'
+          shutil.copy2(apk, target)
+          checksum = hashlib.sha256(target.read_bytes()).hexdigest()
+          report = signature + '\n' + badging.splitlines()[0] + '\nSHA256: ' + checksum + '\n'
+          (output / 'verification.txt').write_text(report)
+          print(report)
+          PY
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DailyLedger-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: apk-output/
+          compression-level: 9
+          retention-days: 14
           if-no-files-found: error
