@@ -10,7 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,9 +48,10 @@ import com.sadique.dailyledger.ui.screens.LoansScreen
 import com.sadique.dailyledger.ui.screens.SavingsScreen
 import com.sadique.dailyledger.ui.screens.SettingsScreen
 import com.sadique.dailyledger.ui.screens.TransactionsScreen
+import com.sadique.dailyledger.ui.screens.TransactionDialog
 import kotlinx.coroutines.launch
 
-private data class Tab(val label: String, val icon: ImageVector)
+private data class Tab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,9 +77,11 @@ fun DailyLedgerApp(
     val lp by vm.loanPayments.collectAsState()
     val committees by vm.committees.collectAsState()
     val cp by vm.committeePayments.collectAsState()
+    val receipts by vm.committeeReceipts.collectAsState()
     val savings by vm.savings.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var quickTransaction by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val saveError by vm.error.collectAsState()
     LaunchedEffect(user.id) { SyncScheduler.syncNow(context, immediate = true) }
@@ -86,11 +91,11 @@ fun DailyLedgerApp(
 
     val tabs = remember {
         listOf(
-            Tab("Home", Icons.Default.Home),
-            Tab("Transactions", Icons.AutoMirrored.Filled.ReceiptLong),
-            Tab("Loans", Icons.Default.Handshake),
-            Tab("Kameti", Icons.Default.Groups),
-            Tab("Savings", Icons.Default.Savings),
+            Tab("Home", Icons.Outlined.Dashboard, Icons.Default.Dashboard),
+            Tab("Transactions", Icons.AutoMirrored.Outlined.ReceiptLong, Icons.AutoMirrored.Filled.ReceiptLong),
+            Tab("Loans", Icons.Outlined.Handshake, Icons.Default.Handshake),
+            Tab("Kameti", Icons.Outlined.Groups, Icons.Default.Groups),
+            Tab("Savings", Icons.Outlined.Savings, Icons.Default.Savings),
         )
     }
 
@@ -137,7 +142,7 @@ fun DailyLedgerApp(
             TopAppBar(
                 title = { Text("Daily Ledger") },
                 actions = {
-                    IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Default.Settings, contentDescription = "Settings") }
+                    IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Outlined.Settings, contentDescription = "Settings") }
                 },
             )
         },
@@ -147,7 +152,7 @@ fun DailyLedgerApp(
                     NavigationBarItem(
                         selected = tab == i,
                         onClick = { tab = i },
-                        icon = { Icon(t.icon, contentDescription = t.label) },
+                        icon = { Icon(if (tab == i) t.selectedIcon else t.icon, contentDescription = t.label) },
                         label = { Text(t.label) },
                     )
                 }
@@ -156,7 +161,10 @@ fun DailyLedgerApp(
     ) { pad ->
         Box(Modifier.padding(pad).consumeWindowInsets(pad)) {
             when (tab) {
-                0 -> DashboardScreen(tx, loans, lp, committees, cp, savings)
+                0 -> DashboardScreen(tx, loans, lp, committees, cp, receipts, savings,
+                    onAddSalary = { quickTransaction = "INCOME" },
+                    onAddExpense = { quickTransaction = "EXPENSE" },
+                    onOpenSavings = { tab = 4 }, onOpenKameti = { tab = 3 })
                 1 -> TransactionsScreen(
                     items = tx,
                     onSave = { t, a, c, n, d, e -> vm.launch { saveTransaction(t, a, c, n, d, e) } },
@@ -172,18 +180,28 @@ fun DailyLedgerApp(
                 3 -> CommitteeScreen(
                     committees = committees,
                     payments = cp,
-                    onAdd = { n, a, t, s, p, note -> vm.launch { saveCommittee(n, a, t, s, p, note) } },
+                    receipts = receipts,
+                    onAdd = { n, a, t, s, p, note, shares -> vm.launch { saveCommittee(n, a, t, s, p, note, shares) } },
                     onPaid = { c, i, m -> vm.launch { markCommitteePaid(c, i, m) } },
-                    onToggleReceived = { c -> vm.launch { toggleCommitteeReceived(c) } },
+                    onReceive = { id, a, d, n -> vm.launch { addCommitteeReceipt(id, a, d, n) } },
+                    onDeleteReceipt = { r -> vm.launch { deleteCommitteeReceipt(r) } },
                     onDelete = { c -> vm.launch { deleteCommittee(c) } },
                 )
                 else -> SavingsScreen(
                     savings = savings,
-                    committeePaid = cp.sumOf { it.amountMinor },
                     onAdd = { k, a, d, n -> vm.launch { saveSaving(k, a, d, n) } },
                     onDelete = { x -> vm.launch { deleteSaving(x) } },
                 )
             }
         }
     }
+    quickTransaction?.let { type ->
+        TransactionDialog(null, dismiss = { quickTransaction = null },
+            initialType = type, initialCategory = if (type == "INCOME") "Salary" else "",
+            save = { t, a, c, n, d ->
+                vm.launch { saveTransaction(t, a, c, n, d) }
+                quickTransaction = null
+            })
+    }
+
 }

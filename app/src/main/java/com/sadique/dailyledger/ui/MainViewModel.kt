@@ -31,6 +31,7 @@ class MainViewModel(app:Application,val ownerId:String):AndroidViewModel(app){
     val loanPayments=repo.loanPayments.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val committees=repo.committees.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val committeePayments=repo.committeePayments.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
+    val committeeReceipts=repo.committeeReceipts.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val savings=repo.savings.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()

@@ -42,7 +42,38 @@ jobs:
         run: bash tests/run-core-tests.sh
 
       - name: Build APK
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest
+
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Test data upgrade and receiving on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          disable-animations: true
+          profile: pixel_2
+          script: |
+            ./gradlew --no-daemon connectedDebugAndroidTest
+            mkdir -p ui-previews
+            adb pull /sdcard/Android/data/com.sadique.dailyledger/files/. ui-previews/
+
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DailyLedger-test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            ui-previews/
+          retention-days: 14
 
       - name: Verify and prepare APK
         run: |
@@ -76,3 +107,4 @@ jobs:
           compression-level: 9
           retention-days: 14
           if-no-files-found: error
+

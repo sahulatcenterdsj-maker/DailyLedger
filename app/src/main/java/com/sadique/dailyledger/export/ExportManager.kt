@@ -33,6 +33,15 @@ object ExportManager {
             val who = loans.firstOrNull { it.id == p.loanId }?.person.orEmpty()
             rows += "loan_payment,${p.date},,${esc(who)},${esc(p.note)},${plainAmount(p.amountMinor)}"
         }
+        val committees = repo.committees.first().associateBy { it.id }
+        repo.committeePayments.first().forEach { p ->
+            val name = committees[p.committeeId]?.name.orEmpty()
+            rows += "kameti_payment,${p.month},PAYMENT,${esc(name)},${esc("Installment #${p.installmentNumber}")},${plainAmount(p.amountMinor)}"
+        }
+        repo.committeeReceipts.first().forEach { r ->
+            val name = committees[r.committeeId]?.name.orEmpty()
+            rows += "kameti_receiving,${r.date.orEmpty()},RECEIVED,${esc(name)},${esc(r.note)},${plainAmount(r.amountMinor)}"
+        }
         save(context, "DailyLedger-${stamp()}.csv", "text/csv", rows.joinToString("\n").toByteArray(Charsets.UTF_8))
     }
 

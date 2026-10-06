@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -43,7 +43,7 @@ fun LoansScreen(
                             Text("Outstanding ${money(left)} / ${money(loan.principalMinor)}")
                             loan.dueDate?.let { Text("Due $it", style = MaterialTheme.typography.bodySmall) }
                         }
-                        IconButton(onClick = { onDelete(loan) }) { Icon(Icons.Default.Delete, "Delete") }
+                        IconButton(onClick = { onDelete(loan) }) { Icon(Icons.Outlined.DeleteOutline, "Delete") }
                     }
                 }
             }
