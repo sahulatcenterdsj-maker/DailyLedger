@@ -60,7 +60,9 @@ jobs:
           script: |
             ./gradlew --no-daemon connectedDebugAndroidTest
             mkdir -p ui-previews
-            adb pull /sdcard/Android/data/com.sadique.dailyledger/files/. ui-previews/
+            adb pull /data/local/tmp/dailyledger-dashboard.png ui-previews/
+            adb pull /data/local/tmp/dailyledger-dashboard-separate-totals.png ui-previews/
+            adb pull /data/local/tmp/dailyledger-kameti-partial.png ui-previews/
 
 
       - name: Upload test reports

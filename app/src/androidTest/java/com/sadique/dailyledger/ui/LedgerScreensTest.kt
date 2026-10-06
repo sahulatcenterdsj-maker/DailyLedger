@@ -1,12 +1,8 @@
 package com.sadique.dailyledger.ui
 
-import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sadique.dailyledger.data.*
 import com.sadique.dailyledger.ui.screens.*
@@ -14,7 +10,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
+import android.os.ParcelFileDescriptor
+import androidx.test.platform.app.InstrumentationRegistry
 import java.time.YearMonth
 
 @RunWith(AndroidJUnit4::class)
@@ -77,10 +74,10 @@ class LedgerScreensTest {
     }
 
     private fun screenshot(name: String) {
-        val context: Context = ApplicationProvider.getApplicationContext()
-        val file = File(context.getExternalFilesDir(null), "$name.png")
-        compose.onRoot().captureToImage().asAndroidBitmap().let { bitmap ->
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        }
+        compose.waitForIdle()
+        // Keep previews outside app storage: Gradle removes the test app after the run.
+        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand("screencap -p /data/local/tmp/dailyledger-$name.png")
+        ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes() }
     }
 }
