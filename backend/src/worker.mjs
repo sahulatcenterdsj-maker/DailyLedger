@@ -1,0 +1,18 @@
+import{verifyFirebaseToken,firebaseKeys}from'./auth.mjs';
+import{validateInput,groqRequest,validateOutput,takeQuota}from'./protocol.mjs';
+const reply=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+async function boundedBody(response,max){const reader=response.body?.getReader();if(!reader)throw Error('empty');const chunks=[];let size=0;try{while(true){const{done,value}=await reader.read();if(done)break;size+=value.length;if(size>max)throw Error('too_large');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}const bytes=new Uint8Array(size);let at=0;for(const c of chunks){bytes.set(c,at);at+=c.length;}return JSON.parse(new TextDecoder().decode(bytes));}
+export async function handle(req,env,deps={}){
+ const path=new URL(req.url).pathname;if(req.method==='GET'&&path==='/health')return reply({service:'daily-ledger-ai',ready:Boolean(env.GROQ_API_KEY),features:['suggestions','autofill']});
+ const route={'/v1/autofill':'autofill','/v1/insights':'insights'}[path];if(!route)return reply({error:'not_found'},404);if(req.method!=='POST')return reply({error:'method_not_allowed'},405);if(!req.headers.get('content-type')?.startsWith('application/json'))return reply({error:'json_required'},415);
+ const auth=req.headers.get('authorization')||'';if(!auth.startsWith('Bearer '))return reply({error:'sign_in_required'},401);let uid;try{uid=await(deps.verify||verifyFirebaseToken)(auth.slice(7),env.FIREBASE_PROJECT_ID,deps.keys||firebaseKeys);}catch{return reply({error:'sign_in_required'},401);}
+ let body;try{body=validateInput(route,await boundedBody(req,12000));}catch{return reply({error:'invalid_input'},400);}if(!env.GROQ_API_KEY)return reply({error:'setup_pending'},503);
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(uid));const hash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+ const quota=await(deps.quota|| (async data=>{const gate=env.AI_QUOTA.get(env.AI_QUOTA.idFromName('daily-quota'));return(await gate.fetch('https://quota/check',{method:'POST',body:JSON.stringify(data)})).ok;}))({uid:hash,route});if(!quota)return reply({error:'daily_limit'},429);
+ const response=await(deps.fetch||fetch)('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${env.GROQ_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify(groqRequest(route,body)),signal:AbortSignal.timeout(25000),redirect:'error'});
+ if(!response.ok){await response.body?.cancel();return reply({error:response.status===429?'provider_limit':'ai_unavailable'},response.status===429?429:503);}
+ try{const envelope=await boundedBody(response,65536),c=envelope.choices?.[0];if(c?.finish_reason!=='stop'||typeof c.message?.content!=='string'||c.message.tool_calls||c.message.refusal)throw Error('incomplete');return reply(validateOutput(route,JSON.parse(c.message.content)));}catch{return reply({error:'invalid_ai_response'},502);}
+}
+export default{async fetch(req,env){try{return await handle(req,env);}catch{return reply({error:'temporarily_unavailable'},503);}}};
+// SQLite-backed storage holds only hashed quota counters, never financial data or prompts.
+export class QuotaGate{constructor(state){this.state=state;}async fetch(req){const{uid,route}=await req.json();if(!/^[a-f0-9]{64}$/.test(uid)||!['autofill','insights'].includes(route))return reply({},400);const allowed=await this.state.storage.transaction(async tx=>{const r=takeQuota(await tx.get('counts'),uid,route,Date.now());if(r.allowed)await tx.put('counts',r.data);return r.allowed;});return reply({},allowed?200:429);}}

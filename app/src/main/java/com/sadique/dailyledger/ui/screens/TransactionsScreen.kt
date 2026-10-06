@@ -7,7 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -26,6 +26,7 @@ fun TransactionsScreen(
     items: List<TransactionEntity>,
     onSave: (String, Long, String, String, String, TransactionEntity?) -> Unit,
     onDelete: (TransactionEntity) -> Unit,
+    onAutoFill: (() -> Unit)? = null,
 ) {
     var show by remember { mutableStateOf(false) }
     var edit by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -48,6 +49,7 @@ fun TransactionsScreen(
         ) {
             item {
                 Text("Transactions", style = MaterialTheme.typography.headlineMedium)
+                onAutoFill?.let { action -> FilledTonalButton(onClick = action) { Text("AI Auto Fill") } }
                 OutlinedTextField(query, { query = it }, label = { Text("Search") }, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("ALL", "EXPENSE", "INCOME").forEach {
@@ -64,7 +66,7 @@ fun TransactionsScreen(
                         }
                         Column {
                             Text(money(if (x.type == "EXPENSE") -x.amountMinor else x.amountMinor))
-                            IconButton(onClick = { onDelete(x) }) { Icon(Icons.Default.Delete, "Delete") }
+                            IconButton(onClick = { onDelete(x) }) { Icon(Icons.Outlined.DeleteOutline, "Delete") }
                         }
                     }
                 }
@@ -72,27 +74,31 @@ fun TransactionsScreen(
         }
     }
     if (show) {
-        TransactionDialog(edit, { show = false }) { type, amount, cat, note, date ->
+        TransactionDialog(edit, { show = false }, save = { type, amount, cat, note, date ->
             onSave(type, amount, cat, note, date, edit)
             show = false
-        }
+        })
     }
 }
 
 @Composable
-private fun TransactionDialog(
+fun TransactionDialog(
     x: TransactionEntity?,
     dismiss: () -> Unit,
     save: (String, Long, String, String, String) -> Unit,
+    initialType: String = "EXPENSE",
+    initialCategory: String = "",
 ) {
-    var type by remember { mutableStateOf(x?.type ?: "EXPENSE") }
+    var type by remember { mutableStateOf(x?.type ?: initialType) }
     var amount by remember { mutableStateOf(x?.let { plainAmount(it.amountMinor) } ?: "") }
-    var cat by remember { mutableStateOf(x?.category ?: "") }
+    var cat by remember { mutableStateOf(x?.category ?: initialCategory) }
     var note by remember { mutableStateOf(x?.note ?: "") }
     var date by remember { mutableStateOf(x?.date ?: LedgerRepository.today()) }
+    var chooseCategory by remember { mutableStateOf(false) }
+    if (chooseCategory) CategoryPicker(type, { cat = it; chooseCategory = false }, { chooseCategory = false })
     AlertDialog(
         onDismissRequest = dismiss,
-        title = { Text(if (x == null) "Add transaction" else "Edit transaction") },
+        title = { Text(if (x != null) "Edit transaction" else if (initialCategory == "Salary") "Add salary" else "Add transaction") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row {
@@ -100,15 +106,22 @@ private fun TransactionDialog(
                     Spacer(Modifier.width(8.dp))
                     FilterChip(type == "INCOME", { type = "INCOME" }, { Text("Income") })
                 }
+                if (type == "INCOME") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(cat.equals("Salary", true), { cat = "Salary" }, { Text("Salary") })
+                        FilterChip(!cat.equals("Salary", true), { if (cat.equals("Salary", true)) cat = "Other" }, { Text("Other income") })
+                    }
+                }
                 OutlinedTextField(amount, { amount = it }, label = { Text("Amount PKR") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-                OutlinedTextField(cat, { cat = it }, label = { Text("Category") })
+                OutlinedTextField(cat, { cat = it.take(60) }, label = { Text("Category / custom category") })
+                TextButton(onClick = { chooseCategory = true }) { Text("Choose from 93 categories") }
                 OutlinedTextField(note, { note = it }, label = { Text("Note") })
                 OutlinedTextField(date, { date = it }, label = { Text("Date YYYY-MM-DD") }, isError = !isValidDate(date), singleLine = true)
             }
         },
         confirmButton = {
             Button(
-                enabled = isValidDate(date),
+                enabled = isValidDate(date) && (parseMinor(amount) ?: 0) > 0,
                 onClick = {
                     parseMinor(amount)?.takeIf { it > 0 }?.let { save(type, it, cat.ifBlank { "Other" }, note, date.trim()) }
                 },

@@ -1,6 +1,7 @@
 package com.sadique.dailyledger.data
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -54,6 +55,7 @@ data class CommitteeEntity(
     val active: Boolean,
     val note: String,
     val createdAt: Long,
+    @ColumnInfo(defaultValue = "1") val shares: Int = 1,
 )
 
 @Entity(tableName = "committee_payments", indices = [Index("ownerId"), Index("committeeId")])
@@ -65,6 +67,17 @@ data class CommitteePaymentEntity(
     val month: String,
     val amountMinor: Long,
     val paidAt: Long,
+)
+
+@Entity(tableName = "committee_receipts", indices = [Index("ownerId"), Index("committeeId")])
+data class CommitteeReceiptEntity(
+    @PrimaryKey val id: String,
+    val ownerId: String,
+    val committeeId: String,
+    val amountMinor: Long,
+    val date: String?, // Older "received" flags did not record a receiving date.
+    val note: String,
+    val createdAt: Long,
 )
 
 @Entity(tableName = "savings", indices = [Index("ownerId"), Index("date")])

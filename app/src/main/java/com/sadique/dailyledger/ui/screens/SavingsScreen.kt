@@ -5,7 +5,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import com.sadique.dailyledger.ui.SummaryCard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -20,7 +22,6 @@ import com.sadique.dailyledger.ui.parseMinor
 @Composable
 fun SavingsScreen(
     savings: List<SavingEntity>,
-    committeePaid: Long,
     onAdd: (String, Long, String, String) -> Unit,
     onDelete: (SavingEntity) -> Unit,
 ) {
@@ -31,16 +32,9 @@ fun SavingsScreen(
         LazyColumn(Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             item {
                 Text("Savings", style = MaterialTheme.typography.headlineMedium)
-                Text("Direct savings and leftover money stay separate. Kameti appears only in the combined set-aside total.")
-                Card {
-                    Column(Modifier.padding(14.dp)) {
-                        Text("Direct: ${money(direct)}")
-                        Text("Leftover: ${money(leftover)}")
-                        Text("Kameti contributed: ${money(committeePaid)}")
-                        HorizontalDivider()
-                        Text("Total set aside: ${money(direct + leftover + committeePaid)}", style = MaterialTheme.typography.titleMedium)
-                    }
-                }
+                Text("Your savings stay separate from salary and kameti.")
+                Spacer(Modifier.height(12.dp))
+                SummaryCard("Total savings", direct + leftover, Icons.Outlined.AccountBalanceWallet, detail = "Direct: ${money(direct)} • Leftover: ${money(leftover)}")
             }
             items(savings, key = { it.id }) { saving ->
                 Card(Modifier.fillMaxWidth()) {
@@ -50,7 +44,7 @@ fun SavingsScreen(
                             Text("${saving.date} • ${saving.note}", style = MaterialTheme.typography.bodySmall)
                         }
                         Text(money(saving.amountMinor))
-                        IconButton(onClick = { onDelete(saving) }) { Icon(Icons.Default.Delete, "Delete") }
+                        IconButton(onClick = { onDelete(saving) }) { Icon(Icons.Outlined.DeleteOutline, "Delete") }
                     }
                 }
             }
