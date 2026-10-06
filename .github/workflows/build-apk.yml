@@ -20,6 +20,17 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test shared AI backend
+        run: |
+          npm test
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run check:worker
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -50,7 +61,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Test data upgrade and receiving on Android
+      - name: Test data, receiving, AI review and themes on Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -63,6 +74,11 @@ jobs:
             adb pull /data/local/tmp/dailyledger-dashboard.png ui-previews/
             adb pull /data/local/tmp/dailyledger-dashboard-separate-totals.png ui-previews/
             adb pull /data/local/tmp/dailyledger-kameti-partial.png ui-previews/
+            adb pull /data/local/tmp/dailyledger-autofill-review.png ui-previews/
+            adb pull /data/local/tmp/dailyledger-ai-consent.png ui-previews/
+            adb pull /data/local/tmp/dailyledger-aqua-home.png ui-previews/
+            adb pull /data/local/tmp/dailyledger-wallet-savings.png ui-previews/
+            adb pull /data/local/tmp/dailyledger-saving-insights.png ui-previews/
 
 
       - name: Upload test reports

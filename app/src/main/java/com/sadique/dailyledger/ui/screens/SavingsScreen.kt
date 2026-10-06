@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import com.sadique.dailyledger.ui.SummaryCard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,7 +34,7 @@ fun SavingsScreen(
                 Text("Savings", style = MaterialTheme.typography.headlineMedium)
                 Text("Your savings stay separate from salary and kameti.")
                 Spacer(Modifier.height(12.dp))
-                SummaryCard("Total savings", direct + leftover, Icons.Outlined.Savings, detail = "Direct: ${money(direct)} • Leftover: ${money(leftover)}")
+                SummaryCard("Total savings", direct + leftover, Icons.Outlined.AccountBalanceWallet, detail = "Direct: ${money(direct)} • Leftover: ${money(leftover)}")
             }
             items(savings, key = { it.id }) { saving ->
                 Card(Modifier.fillMaxWidth()) {

@@ -26,6 +26,7 @@ fun TransactionsScreen(
     items: List<TransactionEntity>,
     onSave: (String, Long, String, String, String, TransactionEntity?) -> Unit,
     onDelete: (TransactionEntity) -> Unit,
+    onAutoFill: (() -> Unit)? = null,
 ) {
     var show by remember { mutableStateOf(false) }
     var edit by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -48,6 +49,7 @@ fun TransactionsScreen(
         ) {
             item {
                 Text("Transactions", style = MaterialTheme.typography.headlineMedium)
+                onAutoFill?.let { action -> FilledTonalButton(onClick = action) { Text("AI Auto Fill") } }
                 OutlinedTextField(query, { query = it }, label = { Text("Search") }, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("ALL", "EXPENSE", "INCOME").forEach {
@@ -92,6 +94,8 @@ fun TransactionDialog(
     var cat by remember { mutableStateOf(x?.category ?: initialCategory) }
     var note by remember { mutableStateOf(x?.note ?: "") }
     var date by remember { mutableStateOf(x?.date ?: LedgerRepository.today()) }
+    var chooseCategory by remember { mutableStateOf(false) }
+    if (chooseCategory) CategoryPicker(type, { cat = it; chooseCategory = false }, { chooseCategory = false })
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text(if (x != null) "Edit transaction" else if (initialCategory == "Salary") "Add salary" else "Add transaction") },
@@ -109,7 +113,8 @@ fun TransactionDialog(
                     }
                 }
                 OutlinedTextField(amount, { amount = it }, label = { Text("Amount PKR") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-                OutlinedTextField(cat, { cat = it }, label = { Text("Category") })
+                OutlinedTextField(cat, { cat = it.take(60) }, label = { Text("Category / custom category") })
+                TextButton(onClick = { chooseCategory = true }) { Text("Choose from 93 categories") }
                 OutlinedTextField(note, { note = it }, label = { Text("Note") })
                 OutlinedTextField(date, { date = it }, label = { Text("Date YYYY-MM-DD") }, isError = !isValidDate(date), singleLine = true)
             }

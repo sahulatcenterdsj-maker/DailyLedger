@@ -35,6 +35,9 @@ fun SettingsScreen(
     onDriveEnabled: (Boolean) -> Unit, onCloudEnabled: (Boolean) -> Unit, onLogout: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val aiEnabled by vm.aiEnabled.collectAsState()
+    var aiConsent by remember{mutableStateOf(false)}
+    if(aiConsent) AlertDialog(onDismissRequest={aiConsent=false},title={Text("Enable cloud AI?")},text={Text("Automatic suggestions send category totals and comparisons to Groq. Auto Fill sends the text you enter. Account details and transaction notes are not included in summaries. Turn AI off here at any time.")},confirmButton={TextButton(onClick={vm.setAiEnabled(true);aiConsent=false}){Text("Enable AI")}},dismissButton={TextButton(onClick={aiConsent=false}){Text("Cancel")}})
     val secrets = remember(user.id) { SecureSecretStore(context, user.id) }
     var passphrase by remember { mutableStateOf("") }
     var passphraseReady by remember(user.id) { mutableStateOf(secrets.hasPassphrase()) }
@@ -198,10 +201,18 @@ fun SettingsScreen(
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         HorizontalDivider()
+        Text("Saving suggestions & Auto Fill",style=MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("Cloud AI",Modifier.weight(1f));Switch(aiEnabled,onCheckedChange={if(it)aiConsent=true else vm.setAiEnabled(false)})}
+        Text("Automatic insights and reviewed Auto Fill entries. Free usage limits apply. Basic spending insights work offline.",style=MaterialTheme.typography.bodySmall)
+        HorizontalDivider()
         Text("Appearance", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("SYSTEM", "LIGHT", "DARK").forEach {
-                FilterChip(theme == it, { onTheme(it) }, { Text(it.lowercase().replaceFirstChar(Char::uppercase)) })
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("SYSTEM", "LIGHT", "DARK", "AQUA", "SUNSET", "FOREST", "ROSE", "MIDNIGHT").forEach {
+                FilterChip(
+                    selected = theme == it,
+                    onClick = { onTheme(it) },
+                    label = { Text(it.lowercase().replaceFirstChar(Char::uppercase)) },
+                )
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,

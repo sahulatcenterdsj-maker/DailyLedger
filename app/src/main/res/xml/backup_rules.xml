@@ -5,4 +5,5 @@
     <include domain="file" path="datastore" />
     <!-- Keystore-bound secret cannot be restored on another device. -->
     <exclude domain="sharedpref" path="secure_secrets.xml" />
+        <exclude domain="sharedpref" path="ai_preferences.xml" />
 </full-backup-content>

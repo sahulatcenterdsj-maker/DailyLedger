@@ -1,6 +1,15 @@
 package com.sadique.dailyledger.ui
 
 import android.app.Application
+import com.sadique.dailyledger.ai.*
+import com.sadique.dailyledger.ui.screens.AutoFillScreen
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -13,7 +22,7 @@ import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -81,6 +90,15 @@ fun DailyLedgerApp(
     val savings by vm.savings.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var autoFillOpen by remember(user.id) { mutableStateOf(false) }
+    var aiConsent by remember(user.id) { mutableStateOf(false) }
+    val aiEnabled by vm.aiEnabled.collectAsState()
+    val aiTips by vm.aiTips.collectAsState()
+    val aiStatus by vm.aiStatus.collectAsState()
+    val snapshot = remember(tx,user.id) { SpendingInsights.calculate(user.id,tx) }
+    LaunchedEffect(snapshot,aiEnabled) { vm.refreshInsights(snapshot) }
+    if(aiConsent) AlertDialog(onDismissRequest={aiConsent=false},title={Text("Enable cloud AI?")},text={Text("Groq receives category totals and comparisons for saving suggestions. Auto Fill sends the text you enter. Account details and transaction notes are not included in automatic summaries. Suggestions can make mistakes. Turn AI off in Settings any time.")},confirmButton={TextButton(onClick={vm.setAiEnabled(true);aiConsent=false}){Text("Enable AI")}},dismissButton={TextButton(onClick={aiConsent=false}){Text("Cancel")}})
+    if(autoFillOpen){AutoFillScreen(aiEnabled,{aiConsent=true},{autoFillOpen=false},vm::autoFill,vm::saveAiDrafts);return}
     var quickTransaction by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val saveError by vm.error.collectAsState()
@@ -95,7 +113,7 @@ fun DailyLedgerApp(
             Tab("Transactions", Icons.AutoMirrored.Outlined.ReceiptLong, Icons.AutoMirrored.Filled.ReceiptLong),
             Tab("Loans", Icons.Outlined.Handshake, Icons.Default.Handshake),
             Tab("Kameti", Icons.Outlined.Groups, Icons.Default.Groups),
-            Tab("Savings", Icons.Outlined.Savings, Icons.Default.Savings),
+            Tab("Savings", Icons.Outlined.AccountBalanceWallet, Icons.Default.AccountBalanceWallet),
         )
     }
 
@@ -141,13 +159,16 @@ fun DailyLedgerApp(
         topBar = {
             TopAppBar(
                 title = { Text("Daily Ledger") },
+                modifier = Modifier.shadow(8.dp, RoundedCornerShape(bottomStart=18.dp,bottomEnd=18.dp)),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.surface),
                 actions = {
+                    IconButton(onClick={autoFillOpen=true}){Icon(Icons.Outlined.AutoAwesome,"AI Auto Fill")}
                     IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Outlined.Settings, contentDescription = "Settings") }
                 },
             )
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor=MaterialTheme.colorScheme.surface,tonalElevation=8.dp) {
                 tabs.forEachIndexed { i, t ->
                     NavigationBarItem(
                         selected = tab == i,
@@ -164,9 +185,10 @@ fun DailyLedgerApp(
                 0 -> DashboardScreen(tx, loans, lp, committees, cp, receipts, savings,
                     onAddSalary = { quickTransaction = "INCOME" },
                     onAddExpense = { quickTransaction = "EXPENSE" },
-                    onOpenSavings = { tab = 4 }, onOpenKameti = { tab = 3 })
+                    onOpenSavings = { tab = 4 }, onOpenKameti = { tab = 3 },onAutoFill={autoFillOpen=true},snapshot=snapshot,aiTips=aiTips,aiStatus=aiStatus,aiEnabled=aiEnabled,onEnableAi={aiConsent=true})
                 1 -> TransactionsScreen(
                     items = tx,
+                    onAutoFill={autoFillOpen=true},
                     onSave = { t, a, c, n, d, e -> vm.launch { saveTransaction(t, a, c, n, d, e) } },
                     onDelete = { x -> vm.launch { deleteTransaction(x) } },
                 )

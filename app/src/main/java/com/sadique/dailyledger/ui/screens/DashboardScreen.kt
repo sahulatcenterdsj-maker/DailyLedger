@@ -1,6 +1,9 @@
 package com.sadique.dailyledger.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import com.sadique.dailyledger.ai.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,6 +31,12 @@ fun DashboardScreen(
     onAddExpense: () -> Unit,
     onOpenSavings: () -> Unit,
     onOpenKameti: () -> Unit,
+    onAutoFill:(()->Unit)?=null,
+    snapshot:SpendingSnapshot?=null,
+    aiTips:List<SpendingTip> = emptyList(),
+    aiStatus:String="",
+    aiEnabled:Boolean=false,
+    onEnableAi:()->Unit={},
 ) {
     val month = YearMonth.now()
     val summary = monthlySalarySummary(tx, month.toString())
@@ -57,7 +66,7 @@ fun DashboardScreen(
                 Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp),
                 colors = CardDefaults.cardColors(containerColor = if (overBudget) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer),
             ) {
-                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(if(overBudget) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,MaterialTheme.colorScheme.surfaceContainerHigh))).padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Outlined.AccountBalanceWallet, null, Modifier.size(28.dp))
                     Text("Remaining salary", style = MaterialTheme.typography.titleMedium)
                     Text(money(summary.remaining), style = MaterialTheme.typography.headlineLarge)
@@ -88,6 +97,7 @@ fun DashboardScreen(
                 }
             }
         }
+        onAutoFill?.let{action->item{FilledTonalButton(onClick=action,modifier=Modifier.fillMaxWidth()){Icon(Icons.Outlined.AutoAwesome,null,Modifier.size(18.dp));Spacer(Modifier.width(8.dp));Text("AI Auto Fill")}}}
         if (summary.otherIncome > 0L) {
             item { SummaryCard("Other income this month", summary.otherIncome, Icons.Outlined.TrendingUp, detail = "Recorded separately from salary. Salary entries use the Salary category.") }
         }
@@ -97,10 +107,11 @@ fun DashboardScreen(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SummaryCard("Savings total", savings.sumOf { it.amountMinor }, Icons.Outlined.Savings, Modifier.weight(1f), "All saved amounts", onOpenSavings)
+                SummaryCard("Savings total", savings.sumOf { it.amountMinor }, Icons.Outlined.AccountBalanceWallet, Modifier.weight(1f), "All saved amounts", onOpenSavings)
                 SummaryCard("Kameti paid", cp.sumOf { it.amountMinor }, Icons.Outlined.Groups, Modifier.weight(1f), "Received: ${money(received)}\nTo receive: ${money(pending)}", onOpenKameti)
             }
         }
+        snapshot?.let{data->item{InsightsCard(data,aiTips,aiStatus,aiEnabled,onEnableAi)}}
         if (loans.isNotEmpty()) {
             item { Text("Loans", style = MaterialTheme.typography.titleLarge) }
             item {

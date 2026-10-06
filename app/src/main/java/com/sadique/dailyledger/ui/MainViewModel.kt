@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.sadique.dailyledger.data.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import com.sadique.dailyledger.ai.*
 import com.sadique.dailyledger.sync.SyncScheduler
 import com.sadique.dailyledger.sync.BackupLock
 import kotlinx.coroutines.sync.withLock
@@ -48,5 +50,29 @@ class MainViewModel(app:Application,val ownerId:String):AndroidViewModel(app){
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) { _error.value = e.message ?: "Your change could not be saved. Please try again." }
     }
+    private val aiPrefs=AiPreferences(app,ownerId)
+    private val aiService=AiService(app,ownerId)
+    val aiEnabled=MutableStateFlow(aiPrefs.enabled)
+    val aiTips=MutableStateFlow<List<SpendingTip>>(emptyList())
+    val aiStatus=MutableStateFlow("")
+    private var aiJob:Job?=null
+    private var requestedHash=""
+    fun setAiEnabled(value:Boolean){aiPrefs.enabled=value;aiEnabled.value=value;aiJob?.cancel();aiTips.value=emptyList();aiStatus.value=""}
+    private fun checkAccount(){check(FirebaseRuntime.auth(getApplication<Application>()).currentUser?.uid==ownerId){"Please sign in again."}}
+    fun refreshInsights(snapshot:SpendingSnapshot){
+        if(!aiEnabled.value||snapshot.count==0){aiTips.value=emptyList();return}
+        val hash=AiPreferences.digest(AiProtocol.context(snapshot).toString());requestedHash=hash
+        aiPrefs.cached(hash)?.let{aiTips.value=it;aiStatus.value="AI suggestions • recorded totals";return}
+        aiTips.value=emptyList()
+        if(aiJob?.isActive==true)return
+        if(System.currentTimeMillis()-aiPrefs.attemptedAt<60*60000L){aiStatus.value="Local insights are current. Cloud suggestions refresh later to conserve free usage.";return}
+        aiJob=viewModelScope.launch{
+            aiPrefs.attemptedAt=System.currentTimeMillis();aiStatus.value="Preparing AI suggestions…"
+            try{checkAccount();val tips=aiService.insights(snapshot);checkAccount();if(aiEnabled.value&&requestedHash==hash){aiPrefs.save(hash,tips);aiTips.value=tips;aiStatus.value="AI suggestions • recorded totals"}}
+            catch(e:CancellationException){throw e}catch(e:Exception){aiStatus.value=(e as? AiException)?.message?:"AI suggestions are unavailable. Local insights still work."}
+        }
+    }
+    suspend fun autoFill(input:String):AiDraftResult{checkAccount();check(aiEnabled.value){"Enable AI first."};val result=aiService.drafts(input);checkAccount();check(aiEnabled.value);return result}
+    suspend fun saveAiDrafts(drafts:List<TransactionDraft>,batchId:String){BackupLock.mutex.withLock{checkAccount();repo.saveDraftBatch(drafts,batchId)};runCatching{SyncScheduler.syncNow(getApplication<Application>())}}
     class Factory(private val app:Application,private val owner:String):ViewModelProvider.Factory{override fun <T:ViewModel> create(modelClass:Class<T>):T=MainViewModel(app,owner) as T}
 }

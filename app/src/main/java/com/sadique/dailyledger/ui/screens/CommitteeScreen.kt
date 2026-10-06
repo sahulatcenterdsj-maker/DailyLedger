@@ -56,7 +56,7 @@ fun CommitteeScreen(
                 val balance = committeeBalance(committee, rs)
                 val next = (1..committee.totalInstallments).firstOrNull { n -> ps.none { it.installmentNumber == n } }
                 var history by remember(committee.id) { mutableStateOf(false) }
-                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp),colors=CardDefaults.cardColors(containerColor=if(balance.complete) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Groups, null, tint = MaterialTheme.colorScheme.primary)
@@ -74,7 +74,7 @@ fun CommitteeScreen(
                         BalanceRow("Received", balance.received)
                         BalanceRow("Remaining", balance.remaining)
                         LinearProgressIndicator(progress = { if (balance.expected > 0) (balance.received.toFloat() / balance.expected).coerceIn(0f, 1f) else 0f }, modifier = Modifier.fillMaxWidth())
-                        Text(balance.status, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                        Surface(color=MaterialTheme.colorScheme.secondaryContainer,shape=RoundedCornerShape(12.dp)){Text(balance.status,modifier=Modifier.padding(horizontal=12.dp,vertical=6.dp),color=MaterialTheme.colorScheme.onSecondaryContainer,style=MaterialTheme.typography.labelLarge)}
                         committee.payoutInstallment?.let { Text("Planned payout installment: $it", style = MaterialTheme.typography.bodySmall) }
                         if (committee.note.isNotBlank()) Text(committee.note, style = MaterialTheme.typography.bodySmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

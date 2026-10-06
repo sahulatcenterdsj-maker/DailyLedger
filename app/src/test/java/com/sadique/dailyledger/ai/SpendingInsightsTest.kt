@@ -1,0 +1,13 @@
+package com.sadique.dailyledger.ai
+import com.sadique.dailyledger.data.*
+import org.junit.Assert.*
+import org.junit.Test
+import java.time.LocalDate
+class SpendingInsightsTest {
+ private fun tx(id:String,date:String,amount:Long,cat:String="Fuel",owner:String="me",type:String="EXPENSE")=TransactionEntity(id,owner,type,amount,cat,"private",date,1,1)
+ @Test fun salaryOtherIncomeRemainSeparate(){val s=SpendingInsights.calculate("me",listOf(tx("a","2026-10-01",6000000,"Salary",type="INCOME"),tx("b","2026-10-02",200000),tx("c","2026-10-03",100000,"Bonus",type="INCOME")),LocalDate.parse("2026-10-06"));assertEquals(5800000L,s.summary.remaining);assertEquals(100000L,s.summary.otherIncome)}
+ @Test fun sameDaysInShortMonths(){val s=SpendingInsights.calculate("me",listOf(tx("a","2026-02-28",10000),tx("b","2026-03-28",15000),tx("c","2026-03-31",20000)),LocalDate.parse("2026-03-31"));assertEquals(28,s.comparisonDays);assertEquals(15000L,s.currentComparable);assertEquals(10000L,s.previousComparable);assertEquals(35000L,s.summary.expenses)}
+ @Test fun noOtherAccountsOrFutureRows(){val s=SpendingInsights.calculate("me",listOf(tx("a","2026-10-01",10000),tx("b","2026-10-01",99999,owner="other"),tx("c","2026-10-07",99999)),LocalDate.parse("2026-10-06"));assertEquals(10000L,s.summary.expenses);assertEquals(1,s.count)}
+ @Test fun onlyOptionalSpendingReduced(){val s=SpendingInsights.calculate("me",listOf(tx("a","2026-10-01",100000,"Restaurant"),tx("b","2026-10-01",500000,"Medicines")),LocalDate.parse("2026-10-06"));assertTrue(s.tips.single{it.title=="Bachat ka ek option"}.detail.contains("Rs 200"))}
+ @Test fun noFakeComparisonWithoutHistory(){val s=SpendingInsights.calculate("me",listOf(tx("a","2026-10-01",10000)),LocalDate.parse("2026-10-06"));assertTrue(s.tips.any{it.title=="Comparison ke liye data chahiye"});assertFalse(s.tips.any{it.title=="Kharchay mein izafa"})}
+}

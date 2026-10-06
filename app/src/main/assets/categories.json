@@ -1,0 +1,842 @@
+[
+  {
+    "group": "Groceries",
+    "label": "Flour",
+    "type": "EXPENSE",
+    "aliases": [
+      "aata",
+      "atta"
+    ]
+  },
+  {
+    "group": "Groceries",
+    "label": "Rice",
+    "type": "EXPENSE",
+    "aliases": [
+      "chawal"
+    ]
+  },
+  {
+    "group": "Groceries",
+    "label": "Lentils",
+    "type": "EXPENSE",
+    "aliases": [
+      "daal",
+      "dal"
+    ]
+  },
+  {
+    "group": "Groceries",
+    "label": "Cooking oil",
+    "type": "EXPENSE",
+    "aliases": [
+      "oil",
+      "ghee",
+      "tel"
+    ]
+  },
+  {
+    "group": "Groceries",
+    "label": "Spices",
+    "type": "EXPENSE",
+    "aliases": [
+      "masala"
+    ]
+  },
+  {
+    "group": "Groceries",
+    "label": "Sugar & tea",
+    "type": "EXPENSE",
+    "aliases": [
+      "cheeni",
+      "patti"
+    ]
+  },
+  {
+    "group": "Groceries",
+    "label": "Other groceries",
+    "type": "EXPENSE",
+    "aliases": [
+      "rashan",
+      "ration",
+      "grocery"
+    ]
+  },
+  {
+    "group": "Fresh food",
+    "label": "Milk",
+    "type": "EXPENSE",
+    "aliases": [
+      "doodh"
+    ]
+  },
+  {
+    "group": "Fresh food",
+    "label": "Vegetables",
+    "type": "EXPENSE",
+    "aliases": [
+      "sabzi"
+    ]
+  },
+  {
+    "group": "Fresh food",
+    "label": "Fruit",
+    "type": "EXPENSE",
+    "aliases": [
+      "phal"
+    ]
+  },
+  {
+    "group": "Fresh food",
+    "label": "Meat & chicken",
+    "type": "EXPENSE",
+    "aliases": [
+      "gosht",
+      "chicken",
+      "murghi"
+    ]
+  },
+  {
+    "group": "Fresh food",
+    "label": "Fish",
+    "type": "EXPENSE",
+    "aliases": [
+      "machli"
+    ]
+  },
+  {
+    "group": "Fresh food",
+    "label": "Eggs & bread",
+    "type": "EXPENSE",
+    "aliases": [
+      "anday",
+      "egg",
+      "roti"
+    ]
+  },
+  {
+    "group": "Fresh food",
+    "label": "Bakery",
+    "type": "EXPENSE",
+    "aliases": [
+      "bakery",
+      "biscuit"
+    ]
+  },
+  {
+    "group": "Eating out",
+    "label": "Restaurant",
+    "type": "EXPENSE",
+    "aliases": [
+      "restaurant",
+      "dinner",
+      "lunch"
+    ]
+  },
+  {
+    "group": "Eating out",
+    "label": "Takeaway",
+    "type": "EXPENSE",
+    "aliases": [
+      "takeaway",
+      "delivery",
+      "foodpanda"
+    ]
+  },
+  {
+    "group": "Eating out",
+    "label": "Tea & coffee",
+    "type": "EXPENSE",
+    "aliases": [
+      "chai",
+      "coffee",
+      "cafe"
+    ]
+  },
+  {
+    "group": "Eating out",
+    "label": "Snacks",
+    "type": "EXPENSE",
+    "aliases": [
+      "chips",
+      "icecream",
+      "samosa"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Rent",
+    "type": "EXPENSE",
+    "aliases": [
+      "kiraya",
+      "rent"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Repairs",
+    "type": "EXPENSE",
+    "aliases": [
+      "repair",
+      "plumber",
+      "electrician"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Furniture",
+    "type": "EXPENSE",
+    "aliases": [
+      "furniture",
+      "sofa",
+      "bed"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Appliances",
+    "type": "EXPENSE",
+    "aliases": [
+      "appliance",
+      "fridge"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Cleaning",
+    "type": "EXPENSE",
+    "aliases": [
+      "safai",
+      "detergent"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Domestic help",
+    "type": "EXPENSE",
+    "aliases": [
+      "maid",
+      "helper"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Home supplies",
+    "type": "EXPENSE",
+    "aliases": [
+      "bartan",
+      "kitchen"
+    ]
+  },
+  {
+    "group": "Utilities",
+    "label": "Electricity",
+    "type": "EXPENSE",
+    "aliases": [
+      "bijli",
+      "electricity"
+    ]
+  },
+  {
+    "group": "Utilities",
+    "label": "Gas",
+    "type": "EXPENSE",
+    "aliases": [
+      "gas",
+      "sui"
+    ]
+  },
+  {
+    "group": "Utilities",
+    "label": "Water",
+    "type": "EXPENSE",
+    "aliases": [
+      "pani",
+      "water"
+    ]
+  },
+  {
+    "group": "Utilities",
+    "label": "Internet",
+    "type": "EXPENSE",
+    "aliases": [
+      "internet",
+      "wifi"
+    ]
+  },
+  {
+    "group": "Utilities",
+    "label": "Mobile package",
+    "type": "EXPENSE",
+    "aliases": [
+      "mobile",
+      "load",
+      "package"
+    ]
+  },
+  {
+    "group": "Utilities",
+    "label": "TV & cable",
+    "type": "EXPENSE",
+    "aliases": [
+      "cable",
+      "tv"
+    ]
+  },
+  {
+    "group": "Transport",
+    "label": "Fuel",
+    "type": "EXPENSE",
+    "aliases": [
+      "petrol",
+      "diesel",
+      "fuel"
+    ]
+  },
+  {
+    "group": "Transport",
+    "label": "Public transport",
+    "type": "EXPENSE",
+    "aliases": [
+      "bus",
+      "train",
+      "metro"
+    ]
+  },
+  {
+    "group": "Transport",
+    "label": "Taxi & rides",
+    "type": "EXPENSE",
+    "aliases": [
+      "taxi",
+      "rickshaw",
+      "careem",
+      "indrive"
+    ]
+  },
+  {
+    "group": "Transport",
+    "label": "Parking & tolls",
+    "type": "EXPENSE",
+    "aliases": [
+      "parking",
+      "toll"
+    ]
+  },
+  {
+    "group": "Transport",
+    "label": "Vehicle service",
+    "type": "EXPENSE",
+    "aliases": [
+      "service",
+      "mechanic"
+    ]
+  },
+  {
+    "group": "Transport",
+    "label": "Vehicle parts",
+    "type": "EXPENSE",
+    "aliases": [
+      "tyre",
+      "parts"
+    ]
+  },
+  {
+    "group": "Transport",
+    "label": "Vehicle insurance",
+    "type": "EXPENSE",
+    "aliases": [
+      "insurance"
+    ]
+  },
+  {
+    "group": "Health",
+    "label": "Medicines",
+    "type": "EXPENSE",
+    "aliases": [
+      "dawa",
+      "dawai",
+      "medicine",
+      "pharmacy"
+    ]
+  },
+  {
+    "group": "Health",
+    "label": "Doctor",
+    "type": "EXPENSE",
+    "aliases": [
+      "doctor",
+      "clinic"
+    ]
+  },
+  {
+    "group": "Health",
+    "label": "Lab tests",
+    "type": "EXPENSE",
+    "aliases": [
+      "test",
+      "lab",
+      "scan"
+    ]
+  },
+  {
+    "group": "Health",
+    "label": "Hospital",
+    "type": "EXPENSE",
+    "aliases": [
+      "hospital",
+      "operation"
+    ]
+  },
+  {
+    "group": "Health",
+    "label": "Dental",
+    "type": "EXPENSE",
+    "aliases": [
+      "dentist"
+    ]
+  },
+  {
+    "group": "Health",
+    "label": "Glasses",
+    "type": "EXPENSE",
+    "aliases": [
+      "glasses",
+      "chashma"
+    ]
+  },
+  {
+    "group": "Health",
+    "label": "Health insurance",
+    "type": "EXPENSE",
+    "aliases": [
+      "insurance"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "School fees",
+    "type": "EXPENSE",
+    "aliases": [
+      "school",
+      "fees"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "College & university",
+    "type": "EXPENSE",
+    "aliases": [
+      "college",
+      "university"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "Tuition",
+    "type": "EXPENSE",
+    "aliases": [
+      "tuition",
+      "tutor"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "Books",
+    "type": "EXPENSE",
+    "aliases": [
+      "books",
+      "kitab"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "Stationery",
+    "type": "EXPENSE",
+    "aliases": [
+      "stationery",
+      "pen",
+      "copy"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "Courses",
+    "type": "EXPENSE",
+    "aliases": [
+      "course",
+      "training"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "School transport",
+    "type": "EXPENSE",
+    "aliases": [
+      "school",
+      "van"
+    ]
+  },
+  {
+    "group": "Children & family",
+    "label": "Diapers & baby care",
+    "type": "EXPENSE",
+    "aliases": [
+      "diaper",
+      "baby"
+    ]
+  },
+  {
+    "group": "Children & family",
+    "label": "Toys",
+    "type": "EXPENSE",
+    "aliases": [
+      "toy",
+      "khilona"
+    ]
+  },
+  {
+    "group": "Children & family",
+    "label": "Pocket money",
+    "type": "EXPENSE",
+    "aliases": [
+      "pocket"
+    ]
+  },
+  {
+    "group": "Children & family",
+    "label": "Family support",
+    "type": "EXPENSE",
+    "aliases": [
+      "family",
+      "parents"
+    ]
+  },
+  {
+    "group": "Children & family",
+    "label": "Childcare",
+    "type": "EXPENSE",
+    "aliases": [
+      "daycare"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Clothing",
+    "type": "EXPENSE",
+    "aliases": [
+      "kapray",
+      "clothes",
+      "suit"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Shoes",
+    "type": "EXPENSE",
+    "aliases": [
+      "shoes",
+      "jootay"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Haircut",
+    "type": "EXPENSE",
+    "aliases": [
+      "haircut",
+      "barber"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Cosmetics",
+    "type": "EXPENSE",
+    "aliases": [
+      "cosmetic",
+      "makeup"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Toiletries",
+    "type": "EXPENSE",
+    "aliases": [
+      "soap",
+      "shampoo"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Laundry",
+    "type": "EXPENSE",
+    "aliases": [
+      "laundry",
+      "dhobi"
+    ]
+  },
+  {
+    "group": "Leisure",
+    "label": "Subscriptions",
+    "type": "EXPENSE",
+    "aliases": [
+      "subscription",
+      "netflix"
+    ]
+  },
+  {
+    "group": "Leisure",
+    "label": "Cinema & outings",
+    "type": "EXPENSE",
+    "aliases": [
+      "cinema",
+      "outing",
+      "picnic"
+    ]
+  },
+  {
+    "group": "Leisure",
+    "label": "Games & hobbies",
+    "type": "EXPENSE",
+    "aliases": [
+      "game",
+      "hobby"
+    ]
+  },
+  {
+    "group": "Leisure",
+    "label": "Gym & sports",
+    "type": "EXPENSE",
+    "aliases": [
+      "gym",
+      "sport"
+    ]
+  },
+  {
+    "group": "Leisure",
+    "label": "Travel & holidays",
+    "type": "EXPENSE",
+    "aliases": [
+      "holiday",
+      "tour"
+    ]
+  },
+  {
+    "group": "Leisure",
+    "label": "Hotel stay",
+    "type": "EXPENSE",
+    "aliases": [
+      "hotel",
+      "lodging"
+    ]
+  },
+  {
+    "group": "Gifts & charity",
+    "label": "Gifts",
+    "type": "EXPENSE",
+    "aliases": [
+      "gift",
+      "tohfa"
+    ]
+  },
+  {
+    "group": "Gifts & charity",
+    "label": "Weddings & events",
+    "type": "EXPENSE",
+    "aliases": [
+      "shaadi",
+      "wedding"
+    ]
+  },
+  {
+    "group": "Gifts & charity",
+    "label": "Eid & festivals",
+    "type": "EXPENSE",
+    "aliases": [
+      "eid",
+      "festival"
+    ]
+  },
+  {
+    "group": "Gifts & charity",
+    "label": "Zakat",
+    "type": "EXPENSE",
+    "aliases": [
+      "zakat"
+    ]
+  },
+  {
+    "group": "Gifts & charity",
+    "label": "Sadqa & donations",
+    "type": "EXPENSE",
+    "aliases": [
+      "sadqa",
+      "donation",
+      "charity"
+    ]
+  },
+  {
+    "group": "Gifts & charity",
+    "label": "Religious travel",
+    "type": "EXPENSE",
+    "aliases": [
+      "umrah",
+      "hajj"
+    ]
+  },
+  {
+    "group": "Pets",
+    "label": "Pet food",
+    "type": "EXPENSE",
+    "aliases": [
+      "pet",
+      "food"
+    ]
+  },
+  {
+    "group": "Pets",
+    "label": "Veterinary",
+    "type": "EXPENSE",
+    "aliases": [
+      "vet",
+      "veterinary"
+    ]
+  },
+  {
+    "group": "Pets",
+    "label": "Pet supplies",
+    "type": "EXPENSE",
+    "aliases": [
+      "pet",
+      "litter"
+    ]
+  },
+  {
+    "group": "Work & other",
+    "label": "Business expenses",
+    "type": "EXPENSE",
+    "aliases": [
+      "business",
+      "shop"
+    ]
+  },
+  {
+    "group": "Work & other",
+    "label": "Office supplies",
+    "type": "EXPENSE",
+    "aliases": [
+      "office"
+    ]
+  },
+  {
+    "group": "Work & other",
+    "label": "Bank fees",
+    "type": "EXPENSE",
+    "aliases": [
+      "bank",
+      "charges"
+    ]
+  },
+  {
+    "group": "Work & other",
+    "label": "Taxes & documents",
+    "type": "EXPENSE",
+    "aliases": [
+      "tax",
+      "passport"
+    ]
+  },
+  {
+    "group": "Work & other",
+    "label": "Postage",
+    "type": "EXPENSE",
+    "aliases": [
+      "courier",
+      "postage"
+    ]
+  },
+  {
+    "group": "Work & other",
+    "label": "Emergency",
+    "type": "EXPENSE",
+    "aliases": [
+      "emergency"
+    ]
+  },
+  {
+    "group": "Work & other",
+    "label": "Other",
+    "type": "EXPENSE",
+    "aliases": [
+      "other",
+      "misc"
+    ]
+  },
+  {
+    "group": "Income",
+    "label": "Salary",
+    "type": "INCOME",
+    "aliases": [
+      "salary",
+      "tankhwah",
+      "tankha",
+      "تنخواہ"
+    ]
+  },
+  {
+    "group": "Income",
+    "label": "Business income",
+    "type": "INCOME",
+    "aliases": [
+      "profit"
+    ]
+  },
+  {
+    "group": "Income",
+    "label": "Freelance income",
+    "type": "INCOME",
+    "aliases": [
+      "freelance"
+    ]
+  },
+  {
+    "group": "Income",
+    "label": "Rental income",
+    "type": "INCOME",
+    "aliases": [
+      "rental"
+    ]
+  },
+  {
+    "group": "Income",
+    "label": "Bonus",
+    "type": "INCOME",
+    "aliases": [
+      "bonus"
+    ]
+  },
+  {
+    "group": "Income",
+    "label": "Gift received",
+    "type": "INCOME",
+    "aliases": [
+      "gift"
+    ]
+  },
+  {
+    "group": "Income",
+    "label": "Refund",
+    "type": "INCOME",
+    "aliases": [
+      "refund"
+    ]
+  },
+  {
+    "group": "Income",
+    "label": "Other income",
+    "type": "INCOME",
+    "aliases": [
+      "income"
+    ]
+  }
+]

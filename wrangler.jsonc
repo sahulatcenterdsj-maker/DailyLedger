@@ -1,0 +1,11 @@
+{
+ "$schema":"node_modules/wrangler/config-schema.json",
+ "name":"daily-ledger-ai",
+ "main":"backend/src/worker.mjs",
+ "compatibility_date":"2025-10-01",
+ "workers_dev":true,
+ "vars":{"FIREBASE_PROJECT_ID":"daily-ledger-4d8ef"},
+ "durable_objects":{"bindings":[{"name":"AI_QUOTA","class_name":"QuotaGate"}]},
+ "migrations":[{"tag":"v1","new_sqlite_classes":["QuotaGate"]}],
+ "observability":{"enabled":false}
+}

@@ -21,6 +21,15 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
         val now = System.currentTimeMillis()
         dao.upsertTransaction(TransactionEntity(existing?.id ?: newId(), ownerId, type, amountMinor, category.trim(), note.trim(), date, existing?.createdAt ?: now, now))
     }
+    suspend fun saveDraftBatch(drafts:List<TransactionDraft>,batchId:String)=db.withTransaction {
+        require(drafts.size in 1..10);UUID.fromString(batchId)
+        val checked=drafts.map{it.validated()};val now=System.currentTimeMillis()
+        val rows=checked.mapIndexed{i,d->TransactionEntity("$ownerId:ai-$batchId-$i",ownerId,d.type,d.amountMinor,d.category,d.note,d.date,now,now)}
+        val existing=dao.transactionsNow(ownerId).filter{old->rows.any{it.id==old.id}}
+        if(existing.isNotEmpty()) require(existing.size==rows.size&&rows.all{r->existing.any{it.id==r.id&&it.type==r.type&&it.amountMinor==r.amountMinor&&it.category==r.category&&it.note==r.note&&it.date==r.date}}){"This draft was already saved. Start a new Auto Fill entry."}
+        else dao.insertTransactions(rows)
+    }
+
     suspend fun deleteTransaction(item: TransactionEntity) = dao.deleteTransaction(item)
 
     suspend fun saveLoan(direction: String, person: String, principalMinor: Long, dueDate: String?, note: String) {
