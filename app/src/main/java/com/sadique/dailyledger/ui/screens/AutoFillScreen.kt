@@ -27,7 +27,7 @@ import kotlin.coroutines.cancellation.CancellationException
     var message by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};var batch by remember{mutableStateOf(UUID.randomUUID().toString())};var editing by remember{mutableStateOf<Int?>(null)}
     BackHandler{if(!busy)onBack()}
     Scaffold(topBar={TopAppBar(title={Text("AI Auto Fill")},navigationIcon={IconButton(onClick=onBack,enabled=!busy){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){pad->
-        LazyColumn(Modifier.fillMaxSize().padding(pad).imePadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        LazyColumn(Modifier.fillMaxSize().padding(pad).imePadding().testTag("autofill-list"),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             item{Icon(Icons.Outlined.AutoAwesome,null,Modifier.size(30.dp),tint=MaterialTheme.colorScheme.primary);Text("Write it once. Review every entry.",style=MaterialTheme.typography.titleLarge);Text("Roman Urdu, Urdu or English. Income and expenses only; savings, loans and kameti use their own tabs.")}
             if(!enabled)item{Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer)){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text("Enable cloud AI",style=MaterialTheme.typography.titleMedium);Text("Auto Fill sends your entered text to Groq through our service. Automatic suggestions send category totals, without account details or transaction notes. Turn AI off any time in Settings.");Button(onClick=onEnable){Text("Enable AI")}}}}
             item{
@@ -37,7 +37,7 @@ import kotlin.coroutines.cancellation.CancellationException
             }
             if(entries.isNotEmpty())item{Text("Review ${entries.size} entries",style=MaterialTheme.typography.titleLarge);Text("Check the amount, date and category. Nothing is saved yet.")}
             itemsIndexed(entries){i,e->Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(20.dp)){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(e.category,style=MaterialTheme.typography.titleMedium);Text("${e.type} • ${money(e.amountMinor)}",style=MaterialTheme.typography.titleLarge);Text(e.date);if(e.note.isNotBlank())Text(e.note);Row{TextButton(onClick={editing=i},enabled=!busy,modifier=Modifier.testTag("draft-edit-$i")){Text("Edit")};TextButton(onClick={entries=entries.filterIndexed{j,_->i!=j}},enabled=!busy){Text("Remove")}}}}}
-            if(entries.isNotEmpty())item{
+            if(entries.isNotEmpty())item(key="save-drafts"){
                 Button(onClick={busy=true;scope.launch{try{val count=entries.size;save(entries,batch);entries=emptyList();input="";message="$count entries saved to your ledger."}catch(e:CancellationException){throw e}catch(e:Exception){message=if(e is IllegalArgumentException||e is IllegalStateException)e.message?:"Could not save entries." else "Could not save entries. Try again."}finally{busy=false}}},enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("autofill-save")){Text("Save reviewed entries")}
                 TextButton(onClick={entries=emptyList();message="Drafts discarded."},enabled=!busy){Text("Discard drafts")}
             }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.sadique.dailyledger.data.*
 import com.sadique.dailyledger.ui.SummaryCard
@@ -53,7 +54,7 @@ fun DashboardScreen(
     val received = receipts.sumOf { it.amountMinor }
     val pending = committees.sumOf { committeeBalance(it, receipts).remaining }
     LazyColumn(
-        Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
+        Modifier.fillMaxSize().testTag("dashboard-list"), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
@@ -111,7 +112,7 @@ fun DashboardScreen(
                 SummaryCard("Kameti paid", cp.sumOf { it.amountMinor }, Icons.Outlined.Groups, Modifier.weight(1f), "Received: ${money(received)}\nTo receive: ${money(pending)}", onOpenKameti)
             }
         }
-        snapshot?.let{data->item{InsightsCard(data,aiTips,aiStatus,aiEnabled,onEnableAi)}}
+        snapshot?.let{data->item(key="insights"){InsightsCard(data,aiTips,aiStatus,aiEnabled,onEnableAi)}}
         if (loans.isNotEmpty()) {
             item { Text("Loans", style = MaterialTheme.typography.titleLarge) }
             item {
