@@ -21,7 +21,7 @@ class SecureSecretStore(context: Context, ownerId: String) {
     private fun key(create: Boolean = true): SecretKey = synchronized(keyLock) {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (ks.getKey(alias, null) as? SecretKey)?.let { return@synchronized it }
-        check(create) { "Device encryption key is unavailable. Restore using your backup passkey." }
+        check(create) { "Device encryption key is unavailable. Use your verified account backup to recover your records." }
         val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
         gen.init(KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build())

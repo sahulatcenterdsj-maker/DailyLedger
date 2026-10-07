@@ -1,34 +1,28 @@
-> Updated review: see `REVIEW-AND-SETUP.md` for v1.4.1 changes and the current verification status.
+# Daily Ledger 1.4.1 architecture
 
-# Architecture
+## Device and identity
 
-## Identity and local data
+Firebase Authentication provides Google/email sign-in. Firebase UID scopes ledger rows and backup permissions; it is not a secret and is never used as encryption key material. SQLCipher encrypts the Room database using a random device key wrapped in Android Keystore. Existing plaintext databases are checkpointed, exported to a verified encrypted temporary file, and atomically replaced. Corruption/open failures preserve the file and stop startup safely. Android automatic backup/device transfer is excluded; account backup is the recovery route.
 
-Compose UI -> `AccountManager` -> Firebase Auth. The Firebase UID scopes Room rows, per-account backup state, optional Drive secret storage and the Firestore backup document. Ledger restores/imports run in a Room transaction.
+## Cloud account backup
 
-## Firebase AI Logic
+1. Export canonical JSON for the active account.
+2. Generate a random AES-256 data key, or recover the current V3 key through authenticated callable Functions.
+3. Encrypt with AES-GCM and a fresh 96-bit nonce. AAD binds UID and revision. The change-detection fingerprint is HMAC-derived; ciphertext additionally has a SHA-256 integrity check.
+4. Upload ciphertext to the immutable owner/revision Storage path.
+5. Commit metadata using a Firestore revision transaction. A failed revision comparison cannot overwrite another phone. A timeout has unknown outcome, so it must not trigger deletion of the potentially committed object.
+6. Delete the old object only after a confirmed metadata commit. Ambiguous failures may leave ciphertext orphans for later administration; preserving a usable backup takes priority.
 
-The Android app uses `com.google.firebase:firebase-ai` and the Gemini Developer API backend through `Firebase.ai(GenerativeBackend.googleAI())`. Auto Fill and saving suggestions use response schemas plus local `AiProtocol` validation. App Check is initialized before AI use; distributed builds use Play Integrity.
+Functions wrap/unwrap through Cloud KMS with UID/version AAD. Unwrap accepts expected revision/fingerprint/version but never a client-selected user or wrapped key: it reads the authenticated user's current Firestore metadata. Exact metadata matching prevents caching a newly rotated key under an older envelope. Firestore V1 and encrypted Storage V2 can be read; new writes use V3 only.
 
-## Encrypted account backup
+A fresh empty phone asks Restore / Skip. Local edits with a different remote revision require explicit restore or replace. Delete compares the revision and disables automatic backup on that phone. Other devices with an initialized old revision stop on a missing remote rather than silently recreating it. Storage retention/soft-delete and orphan cleanup are separate from deleting the active metadata.
 
-1. Export canonical owner-scoped JSON locally.
-2. Generate/use a random 256-bit DEK.
-3. Encrypt locally with AES-256-GCM and a fresh 12-byte IV.
-4. Upload only ciphertext to `users/{uid}/backups/{revision}.enc` in Firebase Storage.
-5. Wrap the DEK with a Cloud KMS KEK through an authenticated, App-Check-enforced callable Function.
-6. Store V2 metadata at `users/{uid}/backups/latest`: revision, Storage path, wrapped key, IV, ciphertext hash, plaintext change-detection hash and server timestamp.
+## AI and external requests
 
-`unwrapBackupKey` accepts no client-selected UID or wrapped key. It derives UID from `request.auth.uid` and loads the wrapped key from Firestore server-side. Cloud KMS AAD binds the UID and backup format version.
+Gemini through Firebase AI Logic provides reviewed Auto Fill and suggestions only. Fresh opt-in consent, Auth/App Check preflight, bounded generation, account/consent rechecks and local parsing guard the workflow. Built-in category aggregates may be sent; custom labels, identity and transaction notes are excluded from automatic summaries. Auto Fill sends the text the user enters. Cached suggestions are Keystore-encrypted.
 
-A cached device DEK is only an optimization. If AES-GCM authentication fails, the app clears the cache, unwraps the current account key once, and retries once. A second failure is treated as damaged/tampered data.
+Play Integrity is used for the distributed APK; no shared debug token. AI limits in the app are local convenience controls, while Firebase/model quotas remain separate. KMS Functions additionally enforce 30 key operations per account per UTC day. Optional city weather calls Open-Meteo without GPS permission.
 
-Missing/V1 remote metadata always creates a fresh DEK + wrapped key. V1 migration uploads encrypted V2 data first and only replaces legacy metadata after the Firestore transaction succeeds. New Storage objects are deleted on metadata-commit failure; old objects are deleted only after the new metadata is committed.
+## Trust and cost
 
-## Restore policy
-
-A new empty phone detects but does not auto-restore a remote backup. UI presents Restore / Skip. Devices with unsynced local records never silently replace remote data. Revision mismatches produce a conflict requiring explicit restore or replace.
-
-## Trust model
-
-This is account-based envelope encryption, not zero-knowledge E2EE. Firebase Functions/Cloud KMS are trusted and can unwrap an authenticated account's DEK. UID is used for authorization/AAD, never as key material.
+The backend can recover backup keys. This is managed account encryption, not zero-knowledge E2EE. Functions, Storage and KMS require Blaze/billing; linking billing also affects Gemini prices. The APK contains no KMS key material or service-account credential. A copied public development signing key is not a production signing identity. See `REVIEW-AND-SETUP.md` for deployment and testing limits.

@@ -31,11 +31,12 @@ class LedgerScreensTest {
                 DashboardScreen(tx, emptyList(), emptyList(), listOf(kameti),
                     listOf(CommitteePaymentEntity("p", "test", "k", 1, month, 1000000, 1)),
                     emptyList(), listOf(SavingEntity("s", "test", "DIRECT", 2000000, "$month-01", "", 1)),
+                    userName = "Test", weatherEnabled = false, weatherCity = "", weatherTemperature = "", weatherCondition = "",
                     onAddSalary = { opened = "salary" }, onAddExpense = { opened = "expense" },
                     onOpenSavings = { opened = "savings" }, onOpenKameti = { opened = "kameti" })
             }
         }
-        compose.onNodeWithText("Remaining salary").assertIsDisplayed()
+        compose.onNodeWithText("Remaining balance").assertIsDisplayed()
         compose.onNodeWithText(money(7000000)).assertIsDisplayed()
         screenshot("dashboard")
         compose.onNodeWithText("Add salary").performClick()

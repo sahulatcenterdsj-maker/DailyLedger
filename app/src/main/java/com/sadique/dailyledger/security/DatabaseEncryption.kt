@@ -20,7 +20,7 @@ object DatabaseEncryption {
             return saved
         }
         check(!file.exists() || file.length() == 0L || isPlaintext(file)) {
-            "Device database key is missing. Do not clear data; recover with your backup passkey."
+            "Device database key is missing. Do not clear data; recover with a verified account backup."
         }
         val random = EnvelopeCrypto.randomKey()
         val password = Base64.getEncoder().encode(random)

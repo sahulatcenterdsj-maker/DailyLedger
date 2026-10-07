@@ -1,32 +1,21 @@
-> Updated review: see `REVIEW-AND-SETUP.md` for v1.4.1 changes and the current verification status.
+# Daily Ledger 1.4.1
 
-# Daily Ledger — Start Here
+Yeh APK income/kharcha, savings, loans aur kameti ke liye hai. Salary se monthly kharcha minus hota hai; savings aur kameti alag totals hain. Partial kameti receiving, themes, city weather aur optional sounds bhi shamil hain.
 
-Yeh project **Firebase AI Logic + encrypted Firebase account backup** architecture par hai.
+## Update
 
-## Pehle kya configure karna hai
+Nayi APK purani app ke upar install karein. Update ke liye data clear ya uninstall na karein. Phone ka purana database automatically encrypted format mein migrate hota hai. Agar migration fail ho to original file erase nahi hoti.
 
-1. Firebase project `daily-ledger-4d8ef` mein Email/Password aur Google Authentication verify karo.
-2. `app/google-services.json` package `com.sadique.dailyledger` ke saath rehna chahiye.
-3. Firebase AI Logic setup complete karo aur Android App Check register karo. Debug build ke liye Debug provider aur release ke liye Play Integrity use hota hai.
-4. Firebase Console > App Check > APIs mein Firebase AI Logic ko production se pehle **Enforced** rakho.
-5. Cloud KMS aur callable Functions ke liye `KMS-SETUP.md` follow karo.
-6. `firebase deploy --only firestore:rules,storage,functions` se server-side pieces deploy karo.
+## Backup
 
-## AI ka flow
+Isi login ID se naye phone par Restore / Skip milega. Account backup ke liye alag passphrase nahi mangi jati. Random key data encrypt karti hai; user ID sirf account ki pehchan hai. Backend Functions + KMS login verify karke key recover karta hai.
 
-Auto Fill Roman Urdu, Urdu ya English text leta hai. Firebase AI Logic structured JSON schema ke mutabiq income/expense drafts banata hai. User pehle draft ko edit/review karta hai, phir Save karta hai. Savings, loans aur kameti records AI Auto Fill se direct create nahi hote.
+Is ZIP ka cloud backup Blaze billing mangta hai. Abhi billing enable ya cloud setup deploy hone ka dawa nahi kiya gaya. Pehle app ka last successful backup status check karein. Automatic backup ON hona backup save hone ki guarantee nahi.
 
-Saving suggestions ko aggregate monthly/category totals milte hain; transaction notes automatic insight prompt ka hissa nahi hain. App mein basic local insights AI ke baghair bhi kaam karte hain.
+Firebase console mein naye backup ka encrypted data aur metadata hota hai. Magar authorized backend/KMS administrator key recover kar sakta hai: yeh WhatsApp jaisi zero-knowledge E2EE nahi. Purane readable backups ya CSV/PDF exports automatically private nahi ban jate.
 
-## Backup ka flow
+## AI
 
-Phone JSON snapshot banata hai -> random AES-256-GCM key se encrypt karta hai -> encrypted file Firebase Storage mein upload hoti hai -> DEK ko callable Function Cloud KMS se wrap karwata hai -> Firestore mein metadata save hota hai.
+Chat nahi hai: sirf suggestions aur review wali Auto Fill. Firebase AI Logic aur Play Integrity App Check console mein configure karne honge. AI enable karte waqt data-sharing consent parhein. AI suggestion ya entry ghalat ho sakti hai; save se pehle review karein. Free/paid usage project ke billing plan aur quota par depend karti hai.
 
-Naye phone par same Firebase account login karne ke baad **Backup found** dialog aata hai. App khud se restore nahi karti. User **Restore** ya **Skip** choose karta hai.
-
-Yeh zero-knowledge E2EE nahi hai: authenticated backend/KMS key recover kar sakta hai. Lekin raw ledger snapshot Storage ya Firestore mein plaintext account backup ke taur par store nahi hota.
-
-## Test
-
-Server setup ke baad `TESTING.md` ke mutabiq aik hi round mein rules, Functions, unit tests, APK build aur real-device flows test karo.
+`REVIEW-AND-SETUP.md` mein review aur next setup steps hain. `KMS-SETUP.md` backend ki paid setup details aur `FIREBASE-AI-SETUP.md` AI configuration batata hai.
