@@ -2,32 +2,24 @@
 
 ## Android Studio
 
-1. Extract the ZIP. Open the `DailyLedgerNative` folder containing `settings.gradle.kts`.
-2. Complete Firebase setup and put `google-services.json` in `app/`.
-3. Allow Gradle sync and install the SDK components requested by the project (compileSdk 37).
-4. Use Android Studio's APK build action. The debug output is `app/build/outputs/apk/debug/app-debug.apk`.
+1. Extract the project ZIP and open the project folder that contains `settings.gradle.kts`.
+2. Keep the configured `app/google-services.json` in place (or replace it only with a fresh file for the same Firebase Android app).
+3. Let Gradle sync and install the Android SDK components requested by the project (`compileSdk 37; targetSdk 36; minSdk 26`).
+4. Build the debug APK. Output: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Terminal
 
-Use Java 17 or a compatible Android Studio Gradle JDK and an Android SDK.
+Use Java 21 and an Android SDK.
 
-Linux/macOS:
-```sh
+```bash
 chmod +x gradlew
-./gradlew assembleDebug
+./gradlew testDebugUnitTest assembleDebug
 ```
 
-Windows:
-```bat
-gradlew.bat assembleDebug
-```
-
-`local.properties` can contain the machine's `sdk.dir`; do not copy another machine's SDK path. The supplied Gradle wrapper verifies the download checksum.
+`local.properties` should point to the local SDK only; do not commit another machine's SDK path.
 
 ## GitHub Actions
 
-The included workflow builds a debug APK. Set repository secret `GOOGLE_SERVICES_JSON` to the contents of your Firebase Android configuration. This is a client configuration file; never put a service-account private key in the app or that secret. With no client configuration supplied, the build intentionally has inactive account actions.
+The included workflow tests Firebase rules and Functions, runs backup-core tests, builds/tests Android, verifies package/signing identity, and uploads `DailyLedger.apk`.
 
-## Verification status
-
-Gradle could not be downloaded in the editing environment (`Network is unreachable`). An APK has not been built or run here. Core Java backup tests passed; see `TESTING.md` for checks to run after configuration.
+Use the signed CI artifact to update the previously supplied app. The version is 1.5.1 (code 7); package and development signer are unchanged. Do not uninstall or clear app data to install this update. Test reports include data migration, encryption, offline parsing and UI review.

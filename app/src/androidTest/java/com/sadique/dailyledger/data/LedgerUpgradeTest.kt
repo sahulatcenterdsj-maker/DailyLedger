@@ -1,5 +1,7 @@
 package com.sadique.dailyledger.data
 
+import com.sadique.dailyledger.security.DatabaseEncryption
+import com.sadique.dailyledger.security.EncryptedOpenHelperFactory
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
@@ -43,7 +45,11 @@ class LedgerUpgradeTest {
             old.execSQL("INSERT INTO savings VALUES ('other:s','other','DIRECT',70000,'2026-10-01','',1)")
             old.version = 1
         }
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(AppDatabase.MIGRATION_1_2).build()
+        val password = "migration-test-key-32-bytes-long!!".toByteArray()
+        DatabaseEncryption.migrate(file, password)
+        assertFalse(DatabaseEncryption.isPlaintext(file))
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .openHelperFactory(EncryptedOpenHelperFactory(password)).addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4).build()
         try {
             val dao = db.ledgerDao()
             val committees = dao.committeesNow("owner") // Opening validates all migrated tables against Room's schema.
@@ -71,6 +77,8 @@ class LedgerUpgradeTest {
             val repo = LedgerRepository(db, "owner")
             repo.saveCommittee("Office", 500000, 12, "2026-10", null, "Two at one place", 2)
             val c = repo.committees.first().single()
+            repo.saveCommitteeMember(c.id, "Me", "03001234567", "", 2, "2026-11", true, "My turn")
+            repo.saveCommitteeMember(c.id, "Ali", "03007654321", "", 3, "2026-12", false, "Friend")
             repo.markCommitteePaid(c, 1, "2026-10")
             assertEquals(1000000L, repo.committeePayments.first().single().amountMinor)
             expectRejected { repo.markCommitteePaid(c, 1, "2026-10") }
@@ -82,12 +90,15 @@ class LedgerUpgradeTest {
             repo.addCommitteeReceipt(c.id, 6000000, "2026-11-06", "Second kameti")
             assertTrue(repo.committees.first().single().received)
             val json = repo.exportJson()
-            assertEquals(2, JSONObject(json).getInt("version"))
+            assertEquals(3, JSONObject(json).getInt("version"))
             val restored = LedgerRepository(db, "restored")
             restored.importJson(json)
             val restoredCommittee = restored.committees.first().single()
             val restoredReceipts = restored.committeeReceipts.first()
+            val restoredMembers = restored.committeeMembers.first()
             assertEquals(2, restoredCommittee.shares)
+            assertEquals(2, restoredMembers.size)
+            assertTrue(restoredMembers.any { it.isMe && it.turnMonth == "2026-11" })
             assertEquals(2, restoredReceipts.size)
             assertTrue(restoredReceipts.all { it.ownerId == "restored" && it.committeeId == restoredCommittee.id })
             assertEquals(12000000L, committeeBalance(restoredCommittee, restoredReceipts).received)
@@ -130,6 +141,49 @@ class LedgerUpgradeTest {
             signedIn.importJson(backup)
             assertTrue(signedIn.committeeReceipts.first().single().id.startsWith("signed-in:"))
             assertTrue(committeeBalance(signedIn.committees.first().single(), signedIn.committeeReceipts.first()).complete)
+        } finally { db.close() }
+    }
+
+    @Test fun loansMembersAndNewBackupFieldsStayConsistent() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
+        try {
+            val repo = LedgerRepository(db, "owner")
+            repo.saveLoan("LENT", "Ali", 100000, "2026-11-01", "", "03001234567", "923001234567")
+            val loan = repo.loans.first().single()
+            repo.addLoanPayment(loan.id, 40000, "2026-10-07", "First", "Bank")
+            expectRejected { repo.addLoanPayment(loan.id, 60001, "2026-10-08", "Too much") }
+            assertEquals(1, repo.loanPayments.first().size)
+            repo.addLoanPayment(loan.id, 60000, "2026-10-08", "Last", "JazzCash")
+            assertTrue(repo.loans.first().single().closed)
+            expectRejected { repo.addLoanPayment(loan.id, 1, "2026-10-08", "Already settled") }
+            repo.saveCommittee("Office", 10000, 3, "2026-10", null, "", 1, "03007654321")
+            val committee = repo.committees.first().single()
+            repo.saveCommitteeMember(committee.id, "Me", "", "", 1, "2026-10", true, "")
+            expectRejected { repo.saveCommitteeMember(committee.id, "Duplicate", "", "", 1, "2026-10", false, "") }
+            expectRejected { repo.saveCommitteeMember(committee.id, "Too many", "", "", 2, "2026-11", true, "") }
+            repo.markCommitteeMemberReceived(repo.committeeMembers.first().single(), "2026-10-07")
+            repo.markCommitteePaid(committee, 1, "2026-10", "Easypaisa")
+            val json = repo.exportJson()
+            val restored = LedgerRepository(db, "restored")
+            restored.importJson(json)
+            assertEquals("03001234567", restored.loans.first().single().phone)
+            assertEquals("923001234567", restored.loans.first().single().whatsapp)
+            assertTrue(restored.loans.first().single().closed)
+            assertEquals(setOf("Bank", "JazzCash"), restored.loanPayments.first().map { it.method }.toSet())
+            assertEquals("Easypaisa", restored.committeePayments.first().single().method)
+            assertEquals("2026-10-07", restored.committeeMembers.first().single().receivedDate)
+            assertTrue(restored.committeeMembers.first().all { it.ownerId == "restored" })
+            val damaged = JSONObject(json)
+            val members = damaged.getJSONArray("committeeMembers")
+            members.put(JSONObject(members.getJSONObject(0).toString()).put("turnNumber", 2).put("turnMonth", "2026-11"))
+            expectRejected { restored.importJson(damaged.toString()) }
+            assertEquals(1, restored.committeeMembers.first().size)
+            restored.deleteCommittee(restored.committees.first().single())
+            assertTrue(restored.committeeMembers.first().isEmpty())
+            assertEquals(1, repo.committeeMembers.first().size)
+            restored.deleteLoan(restored.loans.first().single())
+            assertTrue(restored.loanPayments.first().isEmpty())
+            assertEquals(2, repo.loanPayments.first().size)
         } finally { db.close() }
     }
 

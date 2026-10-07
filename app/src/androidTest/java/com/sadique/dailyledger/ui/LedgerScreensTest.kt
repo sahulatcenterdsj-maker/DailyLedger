@@ -28,19 +28,21 @@ class LedgerScreensTest {
         )
         compose.setContent {
             DailyLedgerTheme("LIGHT") {
-                DashboardScreen(tx, emptyList(), emptyList(), listOf(kameti),
-                    listOf(CommitteePaymentEntity("p", "test", "k", 1, month, 1000000, 1)),
-                    emptyList(), listOf(SavingEntity("s", "test", "DIRECT", 2000000, "$month-01", "", 1)),
+                DashboardScreen(
+                    tx = tx, loans = emptyList(), lp = emptyList(), committees = listOf(kameti),
+                    cp = listOf(CommitteePaymentEntity("p", "test", "k", 1, month, 1000000, 1)),
+                    receipts = emptyList(), savings = listOf(SavingEntity("s", "test", "DIRECT", 2000000, "$month-01", "", 1)),
+                    userName = "Test", weatherEnabled = false, weatherCity = "", weatherTemperature = "", weatherCondition = "",
                     onAddSalary = { opened = "salary" }, onAddExpense = { opened = "expense" },
                     onOpenSavings = { opened = "savings" }, onOpenKameti = { opened = "kameti" })
             }
         }
-        compose.onNodeWithText("Remaining salary").assertIsDisplayed()
+        compose.onNodeWithText("Remaining balance").assertIsDisplayed()
         compose.onNodeWithText(money(7000000)).assertIsDisplayed()
         screenshot("dashboard")
         compose.onNodeWithText("Add salary").performClick()
         assertEquals("salary", opened)
-        compose.onNodeWithText("Savings total").performScrollTo().performClick()
+        compose.onNodeWithTag("dashboard-list").performScrollToKey("separate-totals");compose.onNodeWithText("Savings total").performScrollTo().performClick()
         assertEquals("savings", opened)
         compose.onNodeWithText("Kameti paid").performScrollTo().performClick()
         assertEquals("kameti", opened)
@@ -51,10 +53,11 @@ class LedgerScreensTest {
         val receipts = mutableStateOf(emptyList<CommitteeReceiptEntity>())
         compose.setContent {
             DailyLedgerTheme("LIGHT") {
-                CommitteeScreen(listOf(kameti), emptyList(), receipts.value,
-                    onAdd = { _, _, _, _, _, _, _ -> }, onPaid = { _, _, _ -> },
-                    onReceive = { id, amount, date, note -> receipts.value = receipts.value + CommitteeReceiptEntity("r", "test", id, amount, date, note, 1) },
-                    onDeleteReceipt = {}, onDelete = {})
+                CommitteeScreen(
+                    committees = listOf(kameti), payments = emptyList(), receipts = receipts.value, members = emptyList(),
+                    onAdd = { _, _, _, _, _, _, _, _ -> }, onPaid = { _, _, _, _ -> },
+                    onReceive = { id, amount, date, note, method -> receipts.value = receipts.value + CommitteeReceiptEntity("r", "test", id, amount, date, note, 1, method) },
+                    onDeleteReceipt = {}, onAddMember = { _, _, _, _, _, _, _, _ -> }, onMemberReceived = { _, _ -> }, onDeleteMember = {}, onDelete = {})
             }
         }
         compose.onNodeWithText("Receive amount").performScrollTo().performClick()

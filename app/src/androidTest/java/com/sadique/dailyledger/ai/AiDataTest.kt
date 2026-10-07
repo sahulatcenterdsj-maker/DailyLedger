@@ -21,5 +21,21 @@ import java.time.LocalDate
   }finally{db.close()}
  }
  @Test fun privateSummaryAndConsentIsolation(){val row=TransactionEntity("secret-id","owner","EXPENSE",150000,"Fuel","private-note","2026-10-06",1,1);val json=AiProtocol.context(SpendingInsights.calculate("owner",listOf(row),LocalDate.parse("2026-10-06"))).toString();assertFalse(json.contains("secret-id"));assertFalse(json.contains("owner"));assertFalse(json.contains("private-note"));val a=AiPreferences(context,"test-a");val b=AiPreferences(context,"test-b");a.enabled=false;b.enabled=false;a.enabled=true;assertFalse(b.enabled);a.save("hash",listOf(SpendingTip("title","detail")));assertNotNull(a.cached("hash"));assertNull(b.cached("hash"));a.enabled=false;assertNull(a.cached("hash"))}
- @Test fun catalogAndEndpointValidation(){val c=CategoryCatalog.load(context);assertEquals(93,c.size);assertEquals(93,c.map{it.label}.distinct().size);assertTrue(c.any{it.label=="Salary"&&it.type=="INCOME"});assertTrue(AiService.validEndpoint("https://ledger.example.workers.dev"));listOf("http://example.workers.dev","https://example.workers.dev.evil.example","https://user:pass@example.workers.dev","https://example.workers.dev/path").forEach{assertFalse(AiService.validEndpoint(it))}}
+ @Test fun catalogAndGeminiSummaryPrivacy(){
+  val c=CategoryCatalog.load(context);assertEquals(93,c.size);assertEquals(93,c.map{it.label}.distinct().size);assertTrue(c.any{it.label=="Salary"&&it.type=="INCOME"})
+  val rows=listOf(TransactionEntity("private-id","me","EXPENSE",10000,"Private person's bill","private note","2026-10-06",1,1),TransactionEntity("id2","me","EXPENSE",20000,"Another private name","","2026-10-06",1,1))
+  val input=AiPrompts.insights(SpendingInsights.calculate("me",rows,LocalDate.parse("2026-10-06")),c).input
+  assertFalse(input.contains("private",ignoreCase=true));assertFalse(input.contains("Another"));assertTrue(input.contains("Other expenses"));assertTrue(input.contains("300.00"))
+ }
+ @Test fun oldProviderConsentDoesNotEnableGeminiAndLimitsAreAccountScoped(){
+  val owner="gemini-migration-test";val raw=context.getSharedPreferences("ai_preferences",Context.MODE_PRIVATE)
+  val old=AiPreferences.digest(owner)+":";val fresh="gemini-v1:"+old
+  raw.edit().putBoolean(old+"enabled",true).remove(fresh+"enabled").remove(fresh+"quota_day").commit()
+  val prefs=AiPreferences(context,owner);assertFalse(prefs.enabled);prefs.enabled=true;assertTrue(prefs.enabled)
+  val now=java.time.Instant.parse("2026-10-07T01:00:00Z").toEpochMilli()
+  repeat(10){assertTrue(prefs.reserve(AiTask.AUTOFILL,now))};assertFalse(prefs.reserve(AiTask.AUTOFILL,now))
+  repeat(2){assertTrue(prefs.reserve(AiTask.INSIGHTS,now))};assertFalse(prefs.reserve(AiTask.INSIGHTS,now))
+  val other=AiPreferences(context,"another-"+java.util.UUID.randomUUID());assertTrue(other.reserve(AiTask.AUTOFILL,now))
+  assertTrue(prefs.reserve(AiTask.AUTOFILL,now+86400000));prefs.enabled=false
+ }
 }

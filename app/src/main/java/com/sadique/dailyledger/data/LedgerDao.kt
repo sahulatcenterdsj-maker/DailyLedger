@@ -5,9 +5,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LedgerDao {
-    @Query("SELECT ownerId FROM transactions WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM loans WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM loan_payments WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM committees WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM committee_payments WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM savings WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM committee_receipts WHERE ownerId LIKE 'offline-%'")
+    @Query("SELECT ownerId FROM transactions WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM loans WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM loan_payments WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM committees WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM committee_payments WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM committee_receipts WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM committee_members WHERE ownerId LIKE 'offline-%' UNION SELECT ownerId FROM savings WHERE ownerId LIKE 'offline-%'")
     fun observeOfflineOwners(): Flow<List<String>>
-    @Query("SELECT (SELECT COUNT(*) FROM transactions WHERE ownerId=:owner) + (SELECT COUNT(*) FROM loans WHERE ownerId=:owner) + (SELECT COUNT(*) FROM loan_payments WHERE ownerId=:owner) + (SELECT COUNT(*) FROM committees WHERE ownerId=:owner) + (SELECT COUNT(*) FROM committee_payments WHERE ownerId=:owner) + (SELECT COUNT(*) FROM savings WHERE ownerId=:owner) + (SELECT COUNT(*) FROM committee_receipts WHERE ownerId=:owner)")
+
+    @Query("SELECT (SELECT COUNT(*) FROM transactions WHERE ownerId=:owner) + (SELECT COUNT(*) FROM loans WHERE ownerId=:owner) + (SELECT COUNT(*) FROM loan_payments WHERE ownerId=:owner) + (SELECT COUNT(*) FROM committees WHERE ownerId=:owner) + (SELECT COUNT(*) FROM committee_payments WHERE ownerId=:owner) + (SELECT COUNT(*) FROM committee_receipts WHERE ownerId=:owner) + (SELECT COUNT(*) FROM committee_members WHERE ownerId=:owner) + (SELECT COUNT(*) FROM savings WHERE ownerId=:owner)")
     suspend fun recordCount(owner: String): Int
 
     @Query("SELECT * FROM transactions WHERE ownerId=:owner ORDER BY date DESC, createdAt DESC")
@@ -15,10 +16,11 @@ interface LedgerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertTransaction(item: TransactionEntity)
     @Delete suspend fun deleteTransaction(item: TransactionEntity)
 
-    @Query("SELECT * FROM loans WHERE ownerId=:owner ORDER BY createdAt DESC")
+    @Query("SELECT * FROM loans WHERE ownerId=:owner ORDER BY closed ASC, createdAt DESC")
     fun observeLoans(owner: String): Flow<List<LoanEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertLoan(item: LoanEntity)
     @Delete suspend fun deleteLoan(item: LoanEntity)
+    @Query("SELECT * FROM loans WHERE ownerId=:owner AND id=:id") suspend fun loanNow(owner: String, id: String): LoanEntity?
     @Query("DELETE FROM loan_payments WHERE ownerId=:owner AND loanId=:loanId") suspend fun deleteLoanPayments(owner: String, loanId: String)
 
     @Query("SELECT * FROM loan_payments WHERE ownerId=:owner ORDER BY date DESC, createdAt DESC")
@@ -30,6 +32,7 @@ interface LedgerDao {
     fun observeCommittees(owner: String): Flow<List<CommitteeEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertCommittee(item: CommitteeEntity)
     @Delete suspend fun deleteCommittee(item: CommitteeEntity)
+    @Query("SELECT * FROM committees WHERE ownerId=:owner AND id=:id") suspend fun committeeNow(owner: String, id: String): CommitteeEntity?
     @Query("DELETE FROM committee_payments WHERE ownerId=:owner AND committeeId=:committeeId") suspend fun deleteCommitteePayments(owner: String, committeeId: String)
 
     @Query("SELECT * FROM committee_payments WHERE ownerId=:owner ORDER BY month DESC, installmentNumber DESC")
@@ -41,12 +44,20 @@ interface LedgerDao {
     fun observeCommitteeReceipts(owner: String): Flow<List<CommitteeReceiptEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertCommitteeReceipt(item: CommitteeReceiptEntity)
     @Delete suspend fun deleteCommitteeReceipt(item: CommitteeReceiptEntity)
-    @Query("SELECT * FROM committees WHERE ownerId=:owner AND id=:id") suspend fun committeeNow(owner: String, id: String): CommitteeEntity?
     @Query("DELETE FROM committee_receipts WHERE ownerId=:owner AND committeeId=:committeeId") suspend fun deleteCommitteeReceipts(owner: String, committeeId: String)
     @Query("SELECT * FROM committee_receipts WHERE ownerId=:owner ORDER BY id") suspend fun committeeReceiptsNow(owner: String): List<CommitteeReceiptEntity>
     @Query("DELETE FROM committee_receipts WHERE ownerId=:owner") suspend fun clearCommitteeReceipts(owner: String)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertCommitteeReceipts(items: List<CommitteeReceiptEntity>)
-    @Query("UPDATE committee_receipts SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateCommitteeReceipts(oldOwner: String, newOwner: String)
+
+    @Query("SELECT * FROM committee_members WHERE ownerId=:owner ORDER BY turnMonth ASC, turnNumber ASC, createdAt ASC")
+    fun observeCommitteeMembers(owner: String): Flow<List<CommitteeMemberEntity>>
+    @Query("SELECT * FROM committee_members WHERE ownerId=:owner AND id=:id") suspend fun committeeMemberNow(owner: String, id: String): CommitteeMemberEntity?
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertCommitteeMember(item: CommitteeMemberEntity)
+    @Delete suspend fun deleteCommitteeMember(item: CommitteeMemberEntity)
+    @Query("SELECT * FROM committee_members WHERE ownerId=:owner ORDER BY id") suspend fun committeeMembersNow(owner: String): List<CommitteeMemberEntity>
+    @Query("DELETE FROM committee_members WHERE ownerId=:owner") suspend fun clearCommitteeMembers(owner: String)
+    @Query("DELETE FROM committee_members WHERE ownerId=:owner AND committeeId=:committeeId") suspend fun deleteCommitteeMembers(owner: String, committeeId: String)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertCommitteeMembers(items: List<CommitteeMemberEntity>)
 
     @Query("SELECT * FROM savings WHERE ownerId=:owner ORDER BY date DESC, createdAt DESC")
     fun observeSavings(owner: String): Flow<List<SavingEntity>>
@@ -74,16 +85,12 @@ interface LedgerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertCommitteePayments(items: List<CommitteePaymentEntity>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertSavings(items: List<SavingEntity>)
 
-    @Query("UPDATE transactions SET ownerId=:newOwner WHERE ownerId=:oldOwner")
-    suspend fun migrateTransactions(oldOwner: String, newOwner: String)
-    @Query("UPDATE loans SET ownerId=:newOwner WHERE ownerId=:oldOwner")
-    suspend fun migrateLoans(oldOwner: String, newOwner: String)
-    @Query("UPDATE loan_payments SET ownerId=:newOwner WHERE ownerId=:oldOwner")
-    suspend fun migrateLoanPayments(oldOwner: String, newOwner: String)
-    @Query("UPDATE committees SET ownerId=:newOwner WHERE ownerId=:oldOwner")
-    suspend fun migrateCommittees(oldOwner: String, newOwner: String)
-    @Query("UPDATE committee_payments SET ownerId=:newOwner WHERE ownerId=:oldOwner")
-    suspend fun migrateCommitteePayments(oldOwner: String, newOwner: String)
-    @Query("UPDATE savings SET ownerId=:newOwner WHERE ownerId=:oldOwner")
-    suspend fun migrateSavings(oldOwner: String, newOwner: String)
+    @Query("UPDATE transactions SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateTransactions(oldOwner: String, newOwner: String)
+    @Query("UPDATE loans SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateLoans(oldOwner: String, newOwner: String)
+    @Query("UPDATE loan_payments SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateLoanPayments(oldOwner: String, newOwner: String)
+    @Query("UPDATE committees SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateCommittees(oldOwner: String, newOwner: String)
+    @Query("UPDATE committee_payments SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateCommitteePayments(oldOwner: String, newOwner: String)
+    @Query("UPDATE committee_receipts SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateCommitteeReceipts(oldOwner: String, newOwner: String)
+    @Query("UPDATE committee_members SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateCommitteeMembers(oldOwner: String, newOwner: String)
+    @Query("UPDATE savings SET ownerId=:newOwner WHERE ownerId=:oldOwner") suspend fun migrateSavings(oldOwner: String, newOwner: String)
 }

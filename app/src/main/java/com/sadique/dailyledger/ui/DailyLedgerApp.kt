@@ -1,37 +1,22 @@
 package com.sadique.dailyledger.ui
 
+import com.sadique.dailyledger.ai.AiConsent
 import android.app.Application
-import com.sadique.dailyledger.ai.*
-import com.sadique.dailyledger.ui.screens.AutoFillScreen
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,23 +27,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sadique.dailyledger.auth.UserProfile
+import com.sadique.dailyledger.ai.SpendingInsights
 import com.sadique.dailyledger.auth.AccountManager
-import com.sadique.dailyledger.sync.SyncScheduler
-import kotlin.coroutines.cancellation.CancellationException
+import com.sadique.dailyledger.auth.UserProfile
 import com.sadique.dailyledger.data.SettingsStore
 import com.sadique.dailyledger.security.Biometrics
+import com.sadique.dailyledger.sync.SyncScheduler
+import com.sadique.dailyledger.sync.CloudBackup
+import com.sadique.dailyledger.sync.BackupInfo
+import com.sadique.dailyledger.ui.screens.AutoFillScreen
 import com.sadique.dailyledger.ui.screens.CommitteeScreen
 import com.sadique.dailyledger.ui.screens.DashboardScreen
 import com.sadique.dailyledger.ui.screens.LoansScreen
 import com.sadique.dailyledger.ui.screens.SavingsScreen
 import com.sadique.dailyledger.ui.screens.SettingsScreen
-import com.sadique.dailyledger.ui.screens.TransactionsScreen
 import com.sadique.dailyledger.ui.screens.TransactionDialog
+import com.sadique.dailyledger.ui.screens.TransactionsScreen
+import com.sadique.dailyledger.weather.WeatherService
+import com.sadique.dailyledger.audio.TransactionSoundPlayer
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 private data class Tab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
 
@@ -74,6 +67,12 @@ fun DailyLedgerApp(
     cloudEnabled: Boolean,
     lastCloudSync: Long,
     cloudStatus: String,
+    weatherEnabled: Boolean,
+    weatherCity: String,
+    weatherTemperature: String,
+    weatherCondition: String,
+    weatherUpdatedAt: Long,
+    transactionSounds: Boolean,
     onLogout: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -87,6 +86,7 @@ fun DailyLedgerApp(
     val committees by vm.committees.collectAsState()
     val cp by vm.committeePayments.collectAsState()
     val receipts by vm.committeeReceipts.collectAsState()
+    val committeeMembers by vm.committeeMembers.collectAsState()
     val savings by vm.savings.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -95,16 +95,106 @@ fun DailyLedgerApp(
     val aiEnabled by vm.aiEnabled.collectAsState()
     val aiTips by vm.aiTips.collectAsState()
     val aiStatus by vm.aiStatus.collectAsState()
-    val snapshot = remember(tx,user.id) { SpendingInsights.calculate(user.id,tx) }
-    LaunchedEffect(snapshot,aiEnabled) { vm.refreshInsights(snapshot) }
-    if(aiConsent) AlertDialog(onDismissRequest={aiConsent=false},title={Text("Enable cloud AI?")},text={Text("Groq receives category totals and comparisons for saving suggestions. Auto Fill sends the text you enter. Account details and transaction notes are not included in automatic summaries. Suggestions can make mistakes. Turn AI off in Settings any time.")},confirmButton={TextButton(onClick={vm.setAiEnabled(true);aiConsent=false}){Text("Enable AI")}},dismissButton={TextButton(onClick={aiConsent=false}){Text("Cancel")}})
-    if(autoFillOpen){AutoFillScreen(aiEnabled,{aiConsent=true},{autoFillOpen=false},vm::autoFill,vm::saveAiDrafts);return}
-    var quickTransaction by remember { mutableStateOf<String?>(null) }
+    val snapshot = remember(tx, savings, loans, lp, user.id) { SpendingInsights.calculate(user.id, tx, savings = savings, loans = loans, loanPayments = lp) }
+    var restoreInfo by remember(user.id) { mutableStateOf<BackupInfo?>(null) }
+    var restoreBusy by remember(user.id) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(snapshot, aiEnabled) { vm.refreshInsights(snapshot) }
+    LaunchedEffect(user.id, cloudEnabled, cloudStatus) {
+        if (cloudEnabled && !vm.repo.hasRecords()) {
+            runCatching { CloudBackup(context, user.id).backupInfo() }
+                .onSuccess { info ->
+                    if (info != null && settings.skippedRestoreRevision(user.id) != info.revision) {
+                        restoreInfo = info
+                    }
+                }
+        }
+    }
+    restoreInfo?.let { info ->
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Backup found") },
+            text = {
+                val whenText = if (info.updatedAt > 0L)
+                    java.text.DateFormat.getDateTimeInstance().format(java.util.Date(info.updatedAt))
+                else "date unavailable"
+                Text("A cloud backup for this account was found ($whenText). Restore it to this phone, or Skip to keep this phone empty for now.")
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !restoreBusy,
+                    onClick = {
+                        restoreBusy = true
+                        scope.launch {
+                            try {
+                                val message = CloudBackup(context, user.id).restore(info.revision)
+                                restoreInfo = null
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Toast.makeText(context, e.message ?: "Could not restore backup.", Toast.LENGTH_LONG).show()
+                            } finally {
+                                restoreBusy = false
+                            }
+                        }
+                    }
+                ) { Text(if (restoreBusy) "Restoring…" else "Restore") }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !restoreBusy,
+                    onClick = {
+                        scope.launch {
+                            settings.setSkippedRestoreRevision(user.id, info.revision)
+                            settings.cloudStatus(user.id, "Backup found and skipped on this phone. You can restore it later from Settings.")
+                            restoreInfo = null
+                        }
+                    }
+                ) { Text("Skip") }
+            },
+        )
+    }
+    LaunchedEffect(weatherEnabled, weatherCity, weatherUpdatedAt) {
+        val stale = System.currentTimeMillis() - weatherUpdatedAt > 30 * 60 * 1000L
+        if (weatherEnabled && weatherCity.isNotBlank() && stale) {
+            runCatching { WeatherService().currentForCity(weatherCity) }
+                .onSuccess { weather ->
+                    settings.setWeatherSnapshot(weather.city, weather.temperature, weather.condition, weather.fetchedAt)
+                }
+        }
+    }
+    if (aiConsent) {
+        AlertDialog(
+            onDismissRequest = { aiConsent = false },
+            title = { Text(AiConsent.TITLE) },
+            text = { Text(AiConsent.TEXT) },
+            confirmButton = { TextButton(onClick = { vm.setAiEnabled(true); aiConsent = false }) { Text("Enable AI") } },
+            dismissButton = { TextButton(onClick = { aiConsent = false }) { Text("Cancel") } },
+        )
+    }
+    if (autoFillOpen) {
+        AutoFillScreen(
+            enabled = aiEnabled,
+            onEnable = { aiConsent = true },
+            onBack = { autoFillOpen = false },
+            generate = vm::autoFill,
+            save = { drafts, batchId ->
+                vm.saveAiDrafts(drafts, batchId)
+                if (transactionSounds) TransactionSoundPlayer.playBatchSuccess(context)
+            },
+        )
+        return
+    }
+    var quickTransaction by remember { mutableStateOf<String?>(null) }
     val saveError by vm.error.collectAsState()
     LaunchedEffect(user.id) { SyncScheduler.syncNow(context, immediate = true) }
     LaunchedEffect(saveError) {
-        saveError?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show(); vm.clearError() }
+        saveError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            vm.clearError()
+        }
     }
 
     val tabs = remember {
@@ -131,6 +221,12 @@ fun DailyLedgerApp(
             biometric = biometric,
             driveEnabled = driveEnabled,
             lastSync = lastSync,
+            weatherEnabled = weatherEnabled,
+            weatherCity = weatherCity,
+            weatherTemperature = weatherTemperature,
+            weatherCondition = weatherCondition,
+            weatherUpdatedAt = weatherUpdatedAt,
+            transactionSounds = transactionSounds,
             onBack = { settingsOpen = false },
             onTheme = { scope.launch { settings.setTheme(it) } },
             onBiometric = { enable ->
@@ -141,16 +237,26 @@ fun DailyLedgerApp(
                 }
             },
             onDriveEnabled = { scope.launch { settings.setDriveEnabled(user.id, it) } },
-            onCloudEnabled = { enabled -> scope.launch {
-                settings.setCloudEnabled(user.id, enabled)
-                if (enabled) SyncScheduler.syncNow(context, immediate = true)
-                else SyncScheduler.cancelImmediate(context)
-            } },
-            onLogout = { scope.launch {
-                try { AccountManager(context).signOut(); onLogout() }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { Toast.makeText(context, "Could not sign out. Try again.", Toast.LENGTH_LONG).show() }
-            } },
+            onCloudEnabled = { enabled ->
+                scope.launch {
+                    settings.setCloudEnabled(user.id, enabled)
+                    if (enabled) SyncScheduler.syncNow(context, immediate = true)
+                    else SyncScheduler.cancelImmediate(context)
+                }
+            },
+            onWeatherEnabled = { scope.launch { settings.setWeatherEnabled(it) } },
+            onTransactionSounds = { scope.launch { settings.setTransactionSounds(it) } },
+            onLogout = {
+                scope.launch {
+                    try {
+                        AccountManager(context).signOut(); onLogout()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "Could not sign out. Try again.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
         )
         return
     }
@@ -159,16 +265,16 @@ fun DailyLedgerApp(
         topBar = {
             TopAppBar(
                 title = { Text("Daily Ledger") },
-                modifier = Modifier.shadow(8.dp, RoundedCornerShape(bottomStart=18.dp,bottomEnd=18.dp)),
-                colors = TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.surface),
+                modifier = Modifier.shadow(8.dp, RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
                 actions = {
-                    IconButton(onClick={autoFillOpen=true}){Icon(Icons.Outlined.AutoAwesome,"AI Auto Fill")}
+                    IconButton(onClick = { autoFillOpen = true }) { Icon(Icons.Outlined.AutoAwesome, "AI Auto Fill") }
                     IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Outlined.Settings, contentDescription = "Settings") }
                 },
             )
         },
         bottomBar = {
-            NavigationBar(containerColor=MaterialTheme.colorScheme.surface,tonalElevation=8.dp) {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp) {
                 tabs.forEachIndexed { i, t ->
                     NavigationBarItem(
                         selected = tab == i,
@@ -182,31 +288,60 @@ fun DailyLedgerApp(
     ) { pad ->
         Box(Modifier.padding(pad).consumeWindowInsets(pad)) {
             when (tab) {
-                0 -> DashboardScreen(tx, loans, lp, committees, cp, receipts, savings,
+                0 -> DashboardScreen(
+                    tx = tx,
+                    loans = loans,
+                    lp = lp,
+                    committees = committees,
+                    cp = cp,
+                    receipts = receipts,
+                    committeeMembers = committeeMembers,
+                    savings = savings,
+                    userName = user.name,
+                    weatherEnabled = weatherEnabled,
+                    weatherCity = weatherCity,
+                    weatherTemperature = weatherTemperature,
+                    weatherCondition = weatherCondition,
                     onAddSalary = { quickTransaction = "INCOME" },
                     onAddExpense = { quickTransaction = "EXPENSE" },
-                    onOpenSavings = { tab = 4 }, onOpenKameti = { tab = 3 },onAutoFill={autoFillOpen=true},snapshot=snapshot,aiTips=aiTips,aiStatus=aiStatus,aiEnabled=aiEnabled,onEnableAi={aiConsent=true})
+                    onOpenSavings = { tab = 4 },
+                    onOpenKameti = { tab = 3 },
+                    onAutoFill = { autoFillOpen = true },
+                    snapshot = snapshot,
+                    aiTips = aiTips,
+                    aiStatus = aiStatus,
+                    aiEnabled = aiEnabled,
+                    onEnableAi = { aiConsent = true },
+                )
                 1 -> TransactionsScreen(
                     items = tx,
-                    onAutoFill={autoFillOpen=true},
-                    onSave = { t, a, c, n, d, e -> vm.launch { saveTransaction(t, a, c, n, d, e) } },
+                    onAutoFill = { autoFillOpen = true },
+                    onSave = { t, a, c, n, d, e ->
+                        vm.launch(onSuccess = {
+                            if (transactionSounds) TransactionSoundPlayer.play(context, t)
+                        }) { saveTransaction(t, a, c, n, d, e) }
+                    },
                     onDelete = { x -> vm.launch { deleteTransaction(x) } },
                 )
                 2 -> LoansScreen(
                     loans = loans,
                     payments = lp,
-                    onAdd = { d, p, a, due, n -> vm.launch { saveLoan(d, p, a, due, n) } },
-                    onPayment = { id, a, d, n -> vm.launch { addLoanPayment(id, a, d, n) } },
+                    onAdd = { d, p, a, due, n, phone, wa -> vm.launch { saveLoan(d, p, a, due, n, phone, wa) } },
+                    onPayment = { id, a, d, n, method -> vm.launch { addLoanPayment(id, a, d, n, method) } },
                     onDelete = { x -> vm.launch { deleteLoan(x) } },
                 )
                 3 -> CommitteeScreen(
                     committees = committees,
                     payments = cp,
                     receipts = receipts,
-                    onAdd = { n, a, t, s, p, note, shares -> vm.launch { saveCommittee(n, a, t, s, p, note, shares) } },
-                    onPaid = { c, i, m -> vm.launch { markCommitteePaid(c, i, m) } },
-                    onReceive = { id, a, d, n -> vm.launch { addCommitteeReceipt(id, a, d, n) } },
+                    members = committeeMembers,
+                    onAdd = { n, a, t, s, p, note, shares, phone -> vm.launch { saveCommittee(n, a, t, s, p, note, shares, phone) } },
+                    onPaid = { c, i, m, method -> vm.launch { markCommitteePaid(c, i, m, method) } },
+                    onReceive = { id, a, d, n, method -> vm.launch { addCommitteeReceipt(id, a, d, n, method) } },
                     onDeleteReceipt = { r -> vm.launch { deleteCommitteeReceipt(r) } },
+                    onAddMember = { id, name, phone, wa, turn, month, me, note -> vm.launch { saveCommitteeMember(id, name, phone, wa, turn, month, me, note) } },
+                    onMemberReceived = { member, date -> vm.launch { markCommitteeMemberReceived(member, date) } },
+                    onDeleteMember = { member -> vm.launch { deleteCommitteeMember(member) } },
                     onDelete = { c -> vm.launch { deleteCommittee(c) } },
                 )
                 else -> SavingsScreen(
@@ -218,12 +353,17 @@ fun DailyLedgerApp(
         }
     }
     quickTransaction?.let { type ->
-        TransactionDialog(null, dismiss = { quickTransaction = null },
-            initialType = type, initialCategory = if (type == "INCOME") "Salary" else "",
+        TransactionDialog(
+            null,
+            dismiss = { quickTransaction = null },
+            initialType = type,
+            initialCategory = if (type == "INCOME") "Salary" else "",
             save = { t, a, c, n, d ->
-                vm.launch { saveTransaction(t, a, c, n, d) }
+                vm.launch(onSuccess = {
+                    if (transactionSounds) TransactionSoundPlayer.play(context, t)
+                }) { saveTransaction(t, a, c, n, d) }
                 quickTransaction = null
-            })
+            },
+        )
     }
-
 }

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Database (incl. WAL files) and settings are backed up to the user's Google account automatically. -->
-    <include domain="database" path="." />
-    <include domain="file" path="datastore" />
-    <!-- Keystore-bound secret cannot be restored on another device. -->
-    <exclude domain="sharedpref" path="secure_secrets.xml" />
-        <exclude domain="sharedpref" path="ai_preferences.xml" />
+    <!-- Daily Ledger uses its own authenticated encrypted backup. Do not let Android cloud backup
+         upload the plaintext Room database, DataStore, AI cache, or Keystore-bound key cache. -->
+    <exclude domain="root" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="external" path="." />
 </full-backup-content>

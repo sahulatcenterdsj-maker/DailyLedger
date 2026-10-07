@@ -13,10 +13,20 @@ private val Context.dataStore by preferencesDataStore("daily_ledger_settings")
 
 data class CloudState(val ready: Boolean = false, val revision: String = "")
 data class AppSettings(
-    val user: UserProfile?, val theme: String, val biometric: Boolean,
-    val driveEnabled: Boolean, val lastSync: Long,
-    val cloudEnabled: Boolean = true, val lastCloudSync: Long = 0,
+    val user: UserProfile?,
+    val theme: String,
+    val biometric: Boolean,
+    val driveEnabled: Boolean,
+    val lastSync: Long,
+    val cloudEnabled: Boolean = true,
+    val lastCloudSync: Long = 0,
     val cloudStatus: String = "Your backup will be checked when you are online.",
+    val weatherEnabled: Boolean = false,
+    val weatherCity: String = "",
+    val weatherTemperature: String = "",
+    val weatherCondition: String = "",
+    val weatherUpdatedAt: Long = 0,
+    val transactionSounds: Boolean = false,
 )
 
 class SettingsStore(private val context: Context) {
@@ -30,6 +40,12 @@ class SettingsStore(private val context: Context) {
         val biometric = booleanPreferencesKey("biometric")
         val oldDrive = booleanPreferencesKey("drive_enabled")
         val oldSync = longPreferencesKey("last_sync")
+        val weatherEnabled = booleanPreferencesKey("weather_enabled")
+        val weatherCity = stringPreferencesKey("weather_city")
+        val weatherTemperature = stringPreferencesKey("weather_temperature")
+        val weatherCondition = stringPreferencesKey("weather_condition")
+        val weatherUpdatedAt = longPreferencesKey("weather_updated_at")
+        val transactionSounds = booleanPreferencesKey("transaction_sounds")
     }
     private fun drive(owner: String) = booleanPreferencesKey("drive:$owner")
     private fun driveTime(owner: String) = longPreferencesKey("drive_time:$owner")
@@ -38,15 +54,28 @@ class SettingsStore(private val context: Context) {
     private fun cloudMessage(owner: String) = stringPreferencesKey("cloud_message:$owner")
     private fun ready(owner: String) = booleanPreferencesKey("cloud_ready:$owner")
     private fun revision(owner: String) = stringPreferencesKey("cloud_revision:$owner")
+    private fun skippedRestoreRevisionKey(owner: String) = stringPreferencesKey("cloud_restore_skipped:$owner")
     private fun profile(p: Preferences) = p[K.userId]?.let {
         UserProfile(it, p[K.email].orEmpty(), p[K.name].orEmpty(), p[K.photo], p[K.googleEmail])
     }
     val all: Flow<AppSettings> = context.dataStore.data.map { p ->
         val id = p[K.userId].orEmpty()
-        AppSettings(profile(p), p[K.theme] ?: "SYSTEM", p[K.biometric] ?: false,
-            p[drive(id)] ?: false, p[driveTime(id)] ?: 0L,
-            p[cloud(id)] ?: true, p[cloudTime(id)] ?: 0L,
-            p[cloudMessage(id)] ?: "Your backup will be checked when you are online.")
+        AppSettings(
+            user = profile(p),
+            theme = p[K.theme] ?: "SYSTEM",
+            biometric = p[K.biometric] ?: false,
+            driveEnabled = p[drive(id)] ?: false,
+            lastSync = p[driveTime(id)] ?: 0L,
+            cloudEnabled = p[cloud(id)] ?: true,
+            lastCloudSync = p[cloudTime(id)] ?: 0L,
+            cloudStatus = p[cloudMessage(id)] ?: "Your backup will be checked when you are online.",
+            weatherEnabled = p[K.weatherEnabled] ?: false,
+            weatherCity = p[K.weatherCity].orEmpty(),
+            weatherTemperature = p[K.weatherTemperature].orEmpty(),
+            weatherCondition = p[K.weatherCondition].orEmpty(),
+            weatherUpdatedAt = p[K.weatherUpdatedAt] ?: 0L,
+            transactionSounds = p[K.transactionSounds] ?: false,
+        )
     }
     val user = all.map { it.user }
     val theme = all.map { it.theme }
@@ -70,6 +99,24 @@ class SettingsStore(private val context: Context) {
     suspend fun setDriveEnabled(owner: String, value: Boolean) { context.dataStore.edit { it[drive(owner)] = value } }
     suspend fun setLastSync(owner: String, value: Long) { context.dataStore.edit { it[driveTime(owner)] = value } }
     suspend fun setCloudEnabled(owner: String, value: Boolean) { context.dataStore.edit { it[cloud(owner)] = value } }
+    suspend fun setWeatherEnabled(value: Boolean) { context.dataStore.edit { it[K.weatherEnabled] = value } }
+    suspend fun setWeatherCity(value: String) {
+        context.dataStore.edit {
+            it[K.weatherCity] = value.trim()
+            it[K.weatherUpdatedAt] = 0L
+        }
+    }
+    suspend fun setWeatherTemperature(value: String) { context.dataStore.edit { it[K.weatherTemperature] = value.trim() } }
+    suspend fun setWeatherCondition(value: String) { context.dataStore.edit { it[K.weatherCondition] = value.trim() } }
+    suspend fun setWeatherSnapshot(city: String, temperature: String, condition: String, updatedAt: Long) {
+        context.dataStore.edit {
+            it[K.weatherCity] = city.trim()
+            it[K.weatherTemperature] = temperature.trim()
+            it[K.weatherCondition] = condition.trim()
+            it[K.weatherUpdatedAt] = updatedAt
+        }
+    }
+    suspend fun setTransactionSounds(value: Boolean) { context.dataStore.edit { it[K.transactionSounds] = value } }
     suspend fun cloudState(owner: String): CloudState {
         val p = context.dataStore.data.first()
         return CloudState(p[ready(owner)] ?: false, p[revision(owner)].orEmpty())
@@ -82,6 +129,24 @@ class SettingsStore(private val context: Context) {
     }
     suspend fun cloudStatus(owner: String, message: String) {
         context.dataStore.edit { it[cloudMessage(owner)] = message }
+    }
+    suspend fun skippedRestoreRevision(owner: String): String {
+        return context.dataStore.data.first()[skippedRestoreRevisionKey(owner)].orEmpty()
+    }
+    suspend fun setSkippedRestoreRevision(owner: String, value: String) {
+        context.dataStore.edit { prefs ->
+            if (value.isBlank()) prefs.remove(skippedRestoreRevisionKey(owner))
+            else prefs[skippedRestoreRevisionKey(owner)] = value
+        }
+    }
+    suspend fun resetCloudState(owner: String, message: String) {
+        context.dataStore.edit {
+            it[ready(owner)] = false
+            it.remove(revision(owner))
+            it.remove(skippedRestoreRevisionKey(owner))
+            it[cloudTime(owner)] = System.currentTimeMillis()
+            it[cloudMessage(owner)] = message
+        }
     }
     suspend fun migrateLegacyDriveSettings() {
         val p = context.dataStore.data.first()

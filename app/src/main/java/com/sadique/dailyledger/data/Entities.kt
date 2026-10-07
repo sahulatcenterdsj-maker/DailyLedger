@@ -1,7 +1,7 @@
 package com.sadique.dailyledger.data
 
-import androidx.room.Entity
 import androidx.room.ColumnInfo
+import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -29,6 +29,8 @@ data class LoanEntity(
     val note: String,
     val createdAt: Long,
     val closed: Boolean = false,
+    @ColumnInfo(defaultValue = "''") val phone: String = "",
+    @ColumnInfo(defaultValue = "''") val whatsapp: String = "",
 )
 
 @Entity(tableName = "loan_payments", indices = [Index("ownerId"), Index("loanId")])
@@ -40,6 +42,7 @@ data class LoanPaymentEntity(
     val date: String,
     val note: String,
     val createdAt: Long,
+    @ColumnInfo(defaultValue = "Cash") val method: String = "Cash",
 )
 
 @Entity(tableName = "committees", indices = [Index("ownerId")])
@@ -56,6 +59,9 @@ data class CommitteeEntity(
     val note: String,
     val createdAt: Long,
     @ColumnInfo(defaultValue = "1") val shares: Int = 1,
+    @ColumnInfo(defaultValue = "''") val organizerPhone: String = "",
+    // Legacy v3 free-text schedule. New records use committee_members.
+    @ColumnInfo(defaultValue = "''") val memberSchedule: String = "",
 )
 
 @Entity(tableName = "committee_payments", indices = [Index("ownerId"), Index("committeeId")])
@@ -67,6 +73,7 @@ data class CommitteePaymentEntity(
     val month: String,
     val amountMinor: Long,
     val paidAt: Long,
+    @ColumnInfo(defaultValue = "Cash") val method: String = "Cash",
 )
 
 @Entity(tableName = "committee_receipts", indices = [Index("ownerId"), Index("committeeId")])
@@ -77,6 +84,27 @@ data class CommitteeReceiptEntity(
     val amountMinor: Long,
     val date: String?, // Older "received" flags did not record a receiving date.
     val note: String,
+    val createdAt: Long,
+    @ColumnInfo(defaultValue = "Cash") val method: String = "Cash",
+)
+
+@Entity(
+    tableName = "committee_members",
+    indices = [Index("ownerId"), Index("committeeId"), Index("turnMonth")],
+)
+data class CommitteeMemberEntity(
+    @PrimaryKey val id: String,
+    val ownerId: String,
+    val committeeId: String,
+    val name: String,
+    @ColumnInfo(defaultValue = "''") val phone: String = "",
+    @ColumnInfo(defaultValue = "''") val whatsapp: String = "",
+    val turnNumber: Int,
+    val turnMonth: String,
+    @ColumnInfo(defaultValue = "0") val isMe: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val received: Boolean = false,
+    val receivedDate: String? = null,
+    @ColumnInfo(defaultValue = "''") val note: String = "",
     val createdAt: Long,
 )
 

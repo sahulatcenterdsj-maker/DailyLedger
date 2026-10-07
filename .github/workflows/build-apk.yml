@@ -14,28 +14,33 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Test shared AI backend
+      - name: Test Firebase security rules
         run: |
+          npm install --no-audit --no-fund
           npm test
-          npm install --ignore-scripts --no-audit --no-fund
-          npm run check:worker
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+      - name: Test backup-key Cloud Functions
+        run: |
+          npm --prefix functions install --no-audit --no-fund
+          npm --prefix functions run lint
+          npm --prefix functions test
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -52,7 +57,7 @@ jobs:
       - name: Test backup core
         run: bash tests/run-core-tests.sh
 
-      - name: Build APK
+      - name: Build and unit test APK
         run: ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest
 
       - name: Enable emulator acceleration
@@ -61,25 +66,14 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Test data, receiving, AI review and themes on Android
+      - name: Test data, restore review, AI review and UI on Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
           arch: x86_64
           disable-animations: true
           profile: pixel_2
-          script: |
-            ./gradlew --no-daemon connectedDebugAndroidTest
-            mkdir -p ui-previews
-            adb pull /data/local/tmp/dailyledger-dashboard.png ui-previews/
-            adb pull /data/local/tmp/dailyledger-dashboard-separate-totals.png ui-previews/
-            adb pull /data/local/tmp/dailyledger-kameti-partial.png ui-previews/
-            adb pull /data/local/tmp/dailyledger-autofill-review.png ui-previews/
-            adb pull /data/local/tmp/dailyledger-ai-consent.png ui-previews/
-            adb pull /data/local/tmp/dailyledger-aqua-home.png ui-previews/
-            adb pull /data/local/tmp/dailyledger-wallet-savings.png ui-previews/
-            adb pull /data/local/tmp/dailyledger-saving-insights.png ui-previews/
-
+          script: bash tests/run-device-tests.sh
 
       - name: Upload test reports
         if: always()
@@ -125,4 +119,3 @@ jobs:
           compression-level: 9
           retention-days: 14
           if-no-files-found: error
-

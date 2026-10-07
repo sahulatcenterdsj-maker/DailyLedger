@@ -1,16 +1,13 @@
-# Firebase integration status
+# Firebase integration status — 1.5.1
 
-Prepared project status:
+Project: `daily-ledger-4d8ef`; package: `com.sadique.dailyledger`; versionCode: 7.
 
-- `app/google-services.json` is included.
-- Firebase project: `daily-ledger-4d8ef`.
-- Android package: `com.sadique.dailyledger`.
-- Google Services Gradle plugin, Firebase BoM, Firebase Authentication and Cloud Firestore dependencies are already configured.
-- Firestore rules and indexes are included in the project.
-- Existing core backup tests pass (19 checks).
+Offline Mini AI parses common entries and calculates local spending insights without contacting a cloud provider.
 
-Important: the supplied Firebase config currently contains no OAuth client entry. Google Sign-In therefore still requires enabling the Google provider in Firebase Authentication, adding the app's SHA-1/SHA-256 fingerprints, and then downloading a fresh `google-services.json` from Firebase and replacing `app/google-services.json`.
+Implemented in source: Firebase Auth, Firestore metadata, Storage ciphertext, callable KMS Functions, Firebase AI Logic (`gemini-3.5-flash-lite`), Play Integrity App Check, encrypted device database and encrypted AI/key caches. No Cloudflare/Groq request remains in the Android app. Historical backend files in the repository may remain for older APKs.
 
-Email/password authentication and Firestore also require their corresponding Firebase Console setup to be enabled/published.
+The repository CI runs Firestore/Storage rules, Function handlers, Java backup checks, JVM tests, Android instrumentation, UI screenshot capture and APK signer verification.
 
-A full Android Gradle build could not be executed in the preparation environment because downloading the Gradle distribution was blocked by network access.
+Live activation still requires owner-side Firebase AI/App Check configuration and, if the owner accepts Blaze billing, KMS/Functions/Storage setup and rules deployment. Building the APK does not deploy or verify these services. No account upgrade or paid resource provisioning is performed by this review.
+
+See `REVIEW-AND-SETUP.md`, `FIREBASE-AI-SETUP.md`, and `KMS-SETUP.md`.
