@@ -1,15 +1,20 @@
 # Daily Ledger
 
-A native Android personal-finance app for PKR income, spending, savings, loans and kameti. Version **1.4.1** retains the uploaded dashboard, themes, weather and sounds, and adds safer encryption, backup recovery and Firebase AI handling.
+A native Android personal-finance app for PKR income, spending, savings, loans and kameti. Version **1.5.1** combines the uploaded Offline Mini AI, loan contacts and kameti turns with the reviewed encryption and backup fixes.
 
 - Salary minus monthly expenses; savings and kameti have separate totals.
-- Multiple kameti shares and partial receiving.
+- Multiple kameti shares, partial receiving, structured member turns, contact actions and reminders.
+- Borrowed/lent loans with payment methods, complete payment history and overpayment checks.
 - Google/email sign-in using Firebase Authentication.
-- Firebase Gemini suggestions and reviewed Auto Fill. No AI chat and no automatic saving of generated entries.
+- Offline Mini AI: reviewed Roman Urdu/Urdu/English quick entry and local spending/saving suggestions. Common entries require no internet, model download or paid API. It is a small rules engine, not an LLM.
+- Optional Firebase Gemini fallback for complex wording; separate consent required. No AI chat and no automatic saving of generated entries.
+- 93 built-in income/expense categories; a wallet icon for savings.
 - SQLCipher-encrypted local ledger; existing records migrate without a destructive database reset.
 - AES-256-GCM account backups, with same-account recovery and no extra backup passphrase through authenticated Functions + Cloud KMS.
 - Explicit Restore / Skip on a new phone; conflicting phone revisions require a choice.
 - Optional manual Drive copies, CSV/PDF exports, city weather and transaction sounds.
+
+See [v1.5 feature notes](OFFLINE-MINI-AI-LOANS-KAMETI.md). Phone contacts use the system picker; Call/SMS/WhatsApp actions require the user to send or call.
 
 ## Setup and privacy
 

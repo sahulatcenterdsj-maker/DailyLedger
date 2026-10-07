@@ -293,9 +293,9 @@ fun SettingsScreen(
             }
         }
 
-        SectionCard("Saving suggestions & Auto Fill", "Automatic insights and reviewed Auto Fill entries. Free usage limits apply. Basic spending insights work offline.") {
+        SectionCard("Mini AI & Auto Fill", "Offline Mini AI and saving suggestions work without internet or API cost. Cloud AI is optional for complex wording.") {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Cloud AI", Modifier.weight(1f))
+                Text("Optional Cloud AI", Modifier.weight(1f))
                 Switch(aiEnabled, onCheckedChange = { if (it) aiConsent = true else vm.setAiEnabled(false) })
             }
         }

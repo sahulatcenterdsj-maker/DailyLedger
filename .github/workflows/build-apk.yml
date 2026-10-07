@@ -74,11 +74,13 @@ jobs:
           disable-animations: true
           profile: pixel_2
           script: |
-            ./gradlew --no-daemon connectedDebugAndroidTest
+            ledger_test_status=0
+            ./gradlew --no-daemon connectedDebugAndroidTest || ledger_test_status=$?
             mkdir -p ui-previews
             adb shell ls '/data/local/tmp/dailyledger-*.png' | tr -d '\r' | while IFS= read -r f; do
               adb pull "$f" ui-previews/
             done
+            exit "$ledger_test_status"
 
       - name: Upload test reports
         if: always()

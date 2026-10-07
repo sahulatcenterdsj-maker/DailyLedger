@@ -39,6 +39,8 @@ object DatabaseEncryption {
         // A crash before rename leaves only this encrypted temporary file; the original is authoritative.
         temporary.delete()
         File(temporary.path + "-wal").delete(); File(temporary.path + "-shm").delete()
+        // ATTACH inherits the read/write-only flags of the source. Create only the empty target first.
+        check(temporary.createNewFile()) { "Could not create the encrypted migration file." }
         android.database.sqlite.SQLiteDatabase.openDatabase(file.path, null,
             android.database.sqlite.SQLiteDatabase.OPEN_READWRITE,
             { throw IllegalStateException("Original database is damaged; it was preserved.") }).use { old ->

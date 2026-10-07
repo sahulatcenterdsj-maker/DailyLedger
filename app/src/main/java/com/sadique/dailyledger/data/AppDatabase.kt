@@ -10,8 +10,17 @@ import com.sadique.dailyledger.security.DatabaseEncryption
 import com.sadique.dailyledger.security.EncryptedOpenHelperFactory
 
 @Database(
-    entities = [TransactionEntity::class, LoanEntity::class, LoanPaymentEntity::class, CommitteeEntity::class, CommitteePaymentEntity::class, CommitteeReceiptEntity::class, SavingEntity::class],
-    version = 2,
+    entities = [
+        TransactionEntity::class,
+        LoanEntity::class,
+        LoanPaymentEntity::class,
+        CommitteeEntity::class,
+        CommitteePaymentEntity::class,
+        CommitteeReceiptEntity::class,
+        CommitteeMemberEntity::class,
+        SavingEntity::class,
+    ],
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,7 +37,48 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE loans ADD COLUMN phone TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE loans ADD COLUMN whatsapp TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE loan_payments ADD COLUMN method TEXT NOT NULL DEFAULT 'Cash'")
+                db.execSQL("ALTER TABLE committees ADD COLUMN organizerPhone TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE committees ADD COLUMN memberSchedule TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE committee_payments ADD COLUMN method TEXT NOT NULL DEFAULT 'Cash'")
+                db.execSQL("ALTER TABLE committee_receipts ADD COLUMN method TEXT NOT NULL DEFAULT 'Cash'")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS committee_members (
+                        id TEXT NOT NULL,
+                        ownerId TEXT NOT NULL,
+                        committeeId TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        phone TEXT NOT NULL DEFAULT '',
+                        whatsapp TEXT NOT NULL DEFAULT '',
+                        turnNumber INTEGER NOT NULL,
+                        turnMonth TEXT NOT NULL,
+                        isMe INTEGER NOT NULL DEFAULT 0,
+                        received INTEGER NOT NULL DEFAULT 0,
+                        receivedDate TEXT,
+                        note TEXT NOT NULL DEFAULT '',
+                        createdAt INTEGER NOT NULL,
+                        PRIMARY KEY(id)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_committee_members_ownerId ON committee_members(ownerId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_committee_members_committeeId ON committee_members(committeeId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_committee_members_turnMonth ON committee_members(turnMonth)")
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
+
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: run {
                 val file = context.getDatabasePath("daily-ledger.db")
@@ -36,7 +86,7 @@ abstract class AppDatabase : RoomDatabase() {
                 DatabaseEncryption.migrate(file, password)
                 Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "daily-ledger.db")
                     .openHelperFactory(EncryptedOpenHelperFactory(password))
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build().also { INSTANCE = it }
             }
         }

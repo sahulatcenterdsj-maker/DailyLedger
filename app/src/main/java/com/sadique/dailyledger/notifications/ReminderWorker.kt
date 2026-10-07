@@ -20,6 +20,7 @@ class ReminderWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
         val loans = dao.loansNow(user.id)
         val committees = dao.committeesNow(user.id)
         val committeePayments = dao.committeePaymentsNow(user.id)
+        val committeeMembers = dao.committeeMembersNow(user.id)
         val transactions = dao.transactionsNow(user.id)
         val today = LocalDate.now()
 
@@ -30,16 +31,28 @@ class ReminderWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
                 }
             } == true
         }
-        val currentMonth = YearMonth.now().toString()
+
+        val currentMonth = YearMonth.now()
         val committeeDue = committees.count { committee ->
-            committee.active && committeePayments.none { it.committeeId == committee.id && it.month == currentMonth }
+            if (!committee.active) return@count false
+            val currentInstallment = runCatching {
+                val start = YearMonth.parse(committee.startMonth)
+                val offset = java.time.temporal.ChronoUnit.MONTHS.between(start, currentMonth).toInt() + 1
+                offset.takeIf { it in 1..committee.totalInstallments }
+            }.getOrNull() ?: return@count false
+            committeePayments.none { it.committeeId == committee.id && it.installmentNumber == currentInstallment }
         }
+
+        val myTurnsThisMonth = committeeMembers.count { it.ownerId == user.id && it.isMe && !it.received && it.turnMonth == currentMonth.toString() }
+        val myTurnsNextMonth = committeeMembers.count { it.ownerId == user.id && it.isMe && !it.received && it.turnMonth == currentMonth.plusMonths(1).toString() }
 
         val messages = mutableListOf<String>()
         if (dueLoans > 0) messages += "$dueLoans loan due soon"
         if (committeeDue > 0) messages += "$committeeDue kameti payment due"
+        if (myTurnsThisMonth > 0) messages += "Your kameti turn is this month"
+        if (today.dayOfMonth >= 25 && myTurnsNextMonth > 0) messages += "Your kameti turn is next month"
         if (today.dayOfMonth == 1) {
-            val previous = YearMonth.now().minusMonths(1).toString()
+            val previous = currentMonth.minusMonths(1).toString()
             val income = transactions.filter { it.type == "INCOME" && it.date.startsWith(previous) }.sumOf { it.amountMinor }
             val expense = transactions.filter { it.type == "EXPENSE" && it.date.startsWith(previous) }.sumOf { it.amountMinor }
             messages += "Last month: income PKR ${income / 100}, expense PKR ${expense / 100}"

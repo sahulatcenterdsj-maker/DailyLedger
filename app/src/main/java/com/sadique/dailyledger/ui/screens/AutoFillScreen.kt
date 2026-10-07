@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -67,12 +69,17 @@ fun AutoFillScreen(
 ) {
     val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
+    val listState = rememberLazyListState()
     var input by remember { mutableStateOf("") }
     var entries by remember { mutableStateOf(emptyList<TransactionDraft>()) }
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var batch by remember { mutableStateOf(UUID.randomUUID().toString()) }
     var editing by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(entries.isNotEmpty()) {
+        if (entries.isNotEmpty()) listState.animateScrollToItem(3)
+    }
 
     BackHandler { if (!busy) onBack() }
 
@@ -89,6 +96,7 @@ fun AutoFillScreen(
         },
     ) { pad ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(pad)
@@ -134,18 +142,16 @@ fun AutoFillScreen(
                     }
                 }
             }
-            if (!enabled) {
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Enable cloud AI", style = MaterialTheme.typography.titleMedium)
-                            Text("Auto Fill sends your entered text to your cloud AI service. Automatic suggestions send totals only. You can turn AI off any time in Settings.")
-                            Button(onClick = onEnable) { Text("Enable AI") }
-                        }
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Offline Mini AI is always available", style = MaterialTheme.typography.titleMedium)
+                        Text("Common Roman Urdu/Urdu/English entries are processed on this phone with no API cost. Complex wording can optionally fall back to Cloud AI.")
+                        if (!enabled) TextButton(onClick = onEnable) { Text("Enable optional Cloud AI") }
                     }
                 }
             }
-            item {
+            item(key = "input") {
                 Card(
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -159,7 +165,7 @@ fun AutoFillScreen(
                             placeholder = { Text("aj doodh 150, sabzi 200, salary 60000") },
                             minLines = 4,
                             enabled = !busy && entries.isEmpty(),
-                            supportingText = { Text("${input.length}/${AiProtocol.MAX_INPUT} • Internet required") },
+                            supportingText = { Text("${input.length}/${AiProtocol.MAX_INPUT} • Offline first") },
                         )
                         Button(
                             onClick = {
@@ -173,13 +179,16 @@ fun AutoFillScreen(
                                     } catch (e: CancellationException) {
                                         throw e
                                     } catch (e: Exception) {
-                                        message = (e as? AiException)?.message ?: "Could not prepare entries. Nothing was saved."
+                                        message = when (e) {
+                                            is AiException, is IllegalArgumentException, is IllegalStateException -> e.message ?: "Could not prepare entries."
+                                            else -> "Could not prepare entries. Nothing was saved."
+                                        }
                                     } finally {
                                         busy = false
                                     }
                                 }
                             },
-                            enabled = enabled && !busy && input.isNotBlank() && entries.isEmpty(),
+                            enabled = !busy && input.isNotBlank() && entries.isEmpty(),
                             modifier = Modifier.fillMaxWidth().testTag("autofill-generate"),
                         ) {
                             Text(if (busy) "Please wait…" else "Prepare entries")
@@ -196,7 +205,7 @@ fun AutoFillScreen(
                 }
             }
             if (entries.isNotEmpty()) {
-                item {
+                item(key = "review-heading") {
                     Text("Review ${entries.size} entries", style = MaterialTheme.typography.titleLarge)
                     Text(
                         "Check amount, date and category before saving.",
@@ -205,7 +214,7 @@ fun AutoFillScreen(
                     )
                 }
             }
-            itemsIndexed(entries) { i, e ->
+            itemsIndexed(entries, key = { i, _ -> "draft-$i" }) { i, e ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp),

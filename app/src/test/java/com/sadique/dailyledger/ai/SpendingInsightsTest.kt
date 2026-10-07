@@ -10,4 +10,9 @@ class SpendingInsightsTest {
  @Test fun noOtherAccountsOrFutureRows(){val s=SpendingInsights.calculate("me",listOf(tx("a","2026-10-01",10000),tx("b","2026-10-01",99999,owner="other"),tx("c","2026-10-07",99999)),LocalDate.parse("2026-10-06"));assertEquals(10000L,s.summary.expenses);assertEquals(1,s.count)}
  @Test fun onlyOptionalSpendingReduced(){val s=SpendingInsights.calculate("me",listOf(tx("a","2026-10-01",100000,"Restaurant"),tx("b","2026-10-01",500000,"Medicines")),LocalDate.parse("2026-10-06"));assertTrue(s.tips.single{it.title=="Bachat ka ek option"}.detail.contains("Rs 200"))}
  @Test fun noFakeComparisonWithoutHistory(){val s=SpendingInsights.calculate("me",listOf(tx("a","2026-10-01",10000)),LocalDate.parse("2026-10-06"));assertTrue(s.tips.any{it.title=="Comparison ke liye data chahiye"});assertFalse(s.tips.any{it.title=="Kharchay mein izafa"})}
+ @Test fun essentialFoodAndFutureSavingsAreNotOptionalSpend() {
+  val today=LocalDate.parse("2026-10-06")
+  val s=SpendingInsights.calculate("me",listOf(tx("salary","2026-10-01",100000,"Salary",type="INCOME"),tx("pet","2026-10-01",10000,"Pet food")),today,savings=listOf(SavingEntity("future","me","DIRECT",50000,"2026-10-08","",1),SavingEntity("now","me","DIRECT",10000,"2026-10-01","",1)))
+  assertEquals(0L,s.potentialSaving);assertEquals(10000L,s.savedThisMonth);assertEquals(10,s.savingRatePercent)
+ }
 }

@@ -55,6 +55,7 @@ import com.sadique.dailyledger.data.committeeBalance
 import com.sadique.dailyledger.data.CommitteeEntity
 import com.sadique.dailyledger.data.CommitteePaymentEntity
 import com.sadique.dailyledger.data.CommitteeReceiptEntity
+import com.sadique.dailyledger.data.CommitteeMemberEntity
 import com.sadique.dailyledger.data.LoanEntity
 import com.sadique.dailyledger.data.LoanPaymentEntity
 import com.sadique.dailyledger.data.SavingEntity
@@ -73,6 +74,7 @@ fun DashboardScreen(
     committees: List<CommitteeEntity>,
     cp: List<CommitteePaymentEntity>,
     receipts: List<CommitteeReceiptEntity>,
+    committeeMembers: List<CommitteeMemberEntity> = emptyList(),
     savings: List<SavingEntity>,
     userName: String,
     weatherEnabled: Boolean,
@@ -113,6 +115,11 @@ fun DashboardScreen(
     val spentPct = (spentRatio * 100).roundToInt()
     val remainingPct = (remainingRatio * 100).roundToInt()
     val overBudget = summary.remaining < 0
+    val nextMyKametiTurn = committeeMembers
+        .filter { it.isMe && !it.received }
+        .mapNotNull { member -> runCatching { YearMonth.parse(member.turnMonth) }.getOrNull()?.let { it to member } }
+        .filter { (m, _) -> !m.isBefore(month) }
+        .minByOrNull { it.first }
     val animatedSpentRatio = animateFloatAsState(
         targetValue = spentRatio,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = 260f),
@@ -238,7 +245,7 @@ fun DashboardScreen(
                 }
             }
         }
-        item {
+        item(key = "separate-totals") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Money spaces", style = MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -258,6 +265,29 @@ fun DashboardScreen(
                         "Received: ${money(received)}\nPending: ${money(pending)}",
                         onOpenKameti,
                     )
+                }
+                nextMyKametiTurn?.let { (turnMonth, member) ->
+                    val today = java.time.LocalDate.now()
+                    val start = turnMonth.atDay(1)
+                    val days = java.time.temporal.ChronoUnit.DAYS.between(today, start)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Your kameti turn • ${member.turnMonth}", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                when {
+                                    turnMonth == month -> "Your kameti month is here"
+                                    days > 0 -> "$days days remaining"
+                                    else -> "Turn month is due"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                 }
                 if (loans.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

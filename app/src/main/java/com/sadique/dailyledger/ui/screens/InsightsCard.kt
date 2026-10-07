@@ -1,21 +1,82 @@
 package com.sadique.dailyledger.ui.screens
-import androidx.compose.foundation.layout.*
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.sadique.dailyledger.ai.*
-@Composable fun InsightsCard(snapshot:SpendingSnapshot,cloudTips:List<SpendingTip>,status:String,enabled:Boolean,onEnable:()->Unit){
-    Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow)){
-        Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-            Icon(Icons.Outlined.Lightbulb,null,tint=MaterialTheme.colorScheme.primary);Text("Is mahine ke mashwaray",style=MaterialTheme.typography.titleLarge);Text("Recorded expenses • through ${snapshot.through}",style=MaterialTheme.typography.labelMedium)
-            snapshot.tips.forEach{tip->Column(verticalArrangement=Arrangement.spacedBy(3.dp)){Text(tip.title,style=MaterialTheme.typography.titleSmall);Text(tip.detail)}}
+import com.sadique.dailyledger.ai.SpendingSnapshot
+import com.sadique.dailyledger.ai.SpendingTip
+import com.sadique.dailyledger.ui.money
+
+@Composable
+fun InsightsCard(
+    snapshot: SpendingSnapshot,
+    cloudTips: List<SpendingTip>,
+    status: String,
+    enabled: Boolean,
+    onEnable: () -> Unit,
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+                Text("Mini AI • Offline", style = MaterialTheme.typography.titleLarge)
+            }
+            Text("Recorded data only • through ${snapshot.through}", style = MaterialTheme.typography.labelMedium)
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricChip("Money score", if (snapshot.count > 0 && snapshot.summary.salary > 0) "${snapshot.healthScore}/100" else "—", Modifier.weight(1f))
+                MetricChip("Saving rate", "${snapshot.savingRatePercent}%", Modifier.weight(1f))
+                MetricChip("Possible save", money(snapshot.potentialSaving), Modifier.weight(1f))
+            }
+
+            Text("Budget estimate from recorded entries; not a credit score or guaranteed saving.", style = MaterialTheme.typography.bodySmall)
+
+            snapshot.tips.forEach { tip ->
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(tip.title, style = MaterialTheme.typography.titleSmall)
+                    Text(tip.detail)
+                }
+            }
+
             HorizontalDivider()
-            if(!enabled){Text("Cloud AI can add saving suggestions using your category totals. Account details and transaction notes are not included.",style=MaterialTheme.typography.bodySmall);TextButton(onClick=onEnable){Text("Set up AI suggestions")}}
-            else{Text(status.ifBlank{"Cloud suggestions appear when records are available."},style=MaterialTheme.typography.bodySmall);cloudTips.forEach{tip->Text(tip.title,style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary);Text(tip.detail)}}
+            if (!enabled) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Outlined.Lightbulb, null, tint = MaterialTheme.colorScheme.primary)
+                    Text("Offline Mini AI works without internet or API cost.", style = MaterialTheme.typography.bodySmall)
+                }
+                Text("Cloud AI is optional for complex wording; the ledger and local suggestions do not depend on it.", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = onEnable) { Text("Enable optional Cloud AI") }
+            } else {
+                Text(status.ifBlank { "Optional cloud suggestions appear when available." }, style = MaterialTheme.typography.bodySmall)
+                cloudTips.forEach { tip ->
+                    Text(tip.title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                    Text(tip.detail)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricChip(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall)
+            Text(value, style = MaterialTheme.typography.titleSmall)
         }
     }
 }

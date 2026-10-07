@@ -86,6 +86,7 @@ fun DailyLedgerApp(
     val committees by vm.committees.collectAsState()
     val cp by vm.committeePayments.collectAsState()
     val receipts by vm.committeeReceipts.collectAsState()
+    val committeeMembers by vm.committeeMembers.collectAsState()
     val savings by vm.savings.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -94,7 +95,7 @@ fun DailyLedgerApp(
     val aiEnabled by vm.aiEnabled.collectAsState()
     val aiTips by vm.aiTips.collectAsState()
     val aiStatus by vm.aiStatus.collectAsState()
-    val snapshot = remember(tx, user.id) { SpendingInsights.calculate(user.id, tx) }
+    val snapshot = remember(tx, savings, loans, lp, user.id) { SpendingInsights.calculate(user.id, tx, savings = savings, loans = loans, loanPayments = lp) }
     var restoreInfo by remember(user.id) { mutableStateOf<BackupInfo?>(null) }
     var restoreBusy by remember(user.id) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -294,6 +295,7 @@ fun DailyLedgerApp(
                     committees = committees,
                     cp = cp,
                     receipts = receipts,
+                    committeeMembers = committeeMembers,
                     savings = savings,
                     userName = user.name,
                     weatherEnabled = weatherEnabled,
@@ -324,18 +326,22 @@ fun DailyLedgerApp(
                 2 -> LoansScreen(
                     loans = loans,
                     payments = lp,
-                    onAdd = { d, p, a, due, n -> vm.launch { saveLoan(d, p, a, due, n) } },
-                    onPayment = { id, a, d, n -> vm.launch { addLoanPayment(id, a, d, n) } },
+                    onAdd = { d, p, a, due, n, phone, wa -> vm.launch { saveLoan(d, p, a, due, n, phone, wa) } },
+                    onPayment = { id, a, d, n, method -> vm.launch { addLoanPayment(id, a, d, n, method) } },
                     onDelete = { x -> vm.launch { deleteLoan(x) } },
                 )
                 3 -> CommitteeScreen(
                     committees = committees,
                     payments = cp,
                     receipts = receipts,
-                    onAdd = { n, a, t, s, p, note, shares -> vm.launch { saveCommittee(n, a, t, s, p, note, shares) } },
-                    onPaid = { c, i, m -> vm.launch { markCommitteePaid(c, i, m) } },
-                    onReceive = { id, a, d, n -> vm.launch { addCommitteeReceipt(id, a, d, n) } },
+                    members = committeeMembers,
+                    onAdd = { n, a, t, s, p, note, shares, phone -> vm.launch { saveCommittee(n, a, t, s, p, note, shares, phone) } },
+                    onPaid = { c, i, m, method -> vm.launch { markCommitteePaid(c, i, m, method) } },
+                    onReceive = { id, a, d, n, method -> vm.launch { addCommitteeReceipt(id, a, d, n, method) } },
                     onDeleteReceipt = { r -> vm.launch { deleteCommitteeReceipt(r) } },
+                    onAddMember = { id, name, phone, wa, turn, month, me, note -> vm.launch { saveCommitteeMember(id, name, phone, wa, turn, month, me, note) } },
+                    onMemberReceived = { member, date -> vm.launch { markCommitteeMemberReceived(member, date) } },
+                    onDeleteMember = { member -> vm.launch { deleteCommitteeMember(member) } },
                     onDelete = { c -> vm.launch { deleteCommittee(c) } },
                 )
                 else -> SavingsScreen(
