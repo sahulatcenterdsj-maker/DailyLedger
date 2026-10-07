@@ -19,9 +19,9 @@ data class WeatherSnapshot(
 class WeatherService {
     suspend fun currentForCity(query: String): WeatherSnapshot = withContext(Dispatchers.IO) {
         val cityQuery = query.trim()
-        require(cityQuery.length >= 2) { "Enter a city name first." }
+        require(cityQuery.length in 2..120) { "Enter a city name first." }
 
-        val encoded = URLEncoder.encode(cityQuery, StandardCharsets.UTF_8.toString())
+        val encoded = URLEncoder.encode(cityQuery.substringBefore(",").trim(), StandardCharsets.UTF_8.toString())
         val geo = getJson(
             "https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=1&language=en&format=json"
         )
@@ -64,7 +64,16 @@ class WeatherService {
             connection.setRequestProperty("User-Agent", "DailyLedger-Android")
             val code = connection.responseCode
             if (code !in 200..299) throw IllegalStateException("Weather service is temporarily unavailable.")
-            connection.inputStream.bufferedReader().use { JSONObject(it.readText()) }
+            connection.inputStream.use { stream ->
+                val out = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(4096)
+                while (true) {
+                    val count = stream.read(buffer); if (count < 0) break
+                    require(out.size() + count <= 128 * 1024) { "Weather response is too large." }
+                    out.write(buffer, 0, count)
+                }
+                JSONObject(out.toString("UTF-8"))
+            }
         } finally {
             connection.disconnect()
         }

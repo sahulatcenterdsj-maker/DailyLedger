@@ -57,6 +57,7 @@ import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 
 @Composable
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 fun AutoFillScreen(
     enabled: Boolean,
     onEnable: () -> Unit,
@@ -280,7 +281,7 @@ fun AutoFillScreen(
     editing?.let { i ->
         entries.getOrNull(i)?.let { d ->
             TransactionDialog(
-                item = TransactionEntity("draft", "", d.type, d.amountMinor, d.category, d.note, d.date, 0, 0),
+                x = TransactionEntity("draft", "", d.type, d.amountMinor, d.category, d.note, d.date, 0, 0),
                 dismiss = { editing = null },
                 save = { t, a, c, n, date ->
                     entries = entries.mapIndexed { j, old -> if (i == j) TransactionDraft(t, a, c, n, date) else old }

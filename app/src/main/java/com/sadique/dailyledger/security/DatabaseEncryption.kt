@@ -40,14 +40,15 @@ object DatabaseEncryption {
         temporary.delete()
         File(temporary.path + "-wal").delete(); File(temporary.path + "-shm").delete()
         android.database.sqlite.SQLiteDatabase.openDatabase(file.path, null,
-            android.database.sqlite.SQLiteDatabase.OPEN_READWRITE).use { old ->
+            android.database.sqlite.SQLiteDatabase.OPEN_READWRITE,
+            { throw IllegalStateException("Original database is damaged; it was preserved.") }).use { old ->
             old.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).use { c ->
                 check(c.moveToFirst() && c.getInt(0) == 0) { "Database is busy. Please retry." }
             }
             old.disableWriteAheadLogging()
         }
         SQLiteDatabase.openDatabase(file.path, byteArrayOf(), null, SQLiteDatabase.OPEN_READWRITE,
-            { throw IllegalStateException("Original database could not be read; it was not erased.") }, null).use { old ->
+            { _, _ -> throw IllegalStateException("Original database could not be read; it was not erased.") }, null).use { old ->
             val version = old.version
             old.execSQL("ATTACH DATABASE ? AS encrypted KEY ?", arrayOf(temporary.path, String(password, Charsets.UTF_8)))
             try {
@@ -55,7 +56,7 @@ object DatabaseEncryption {
                 old.execSQL("PRAGMA encrypted.user_version = $version")
             } finally { old.execSQL("DETACH DATABASE encrypted") }
             SQLiteDatabase.openDatabase(temporary.path, password, null, SQLiteDatabase.OPEN_READONLY,
-                { throw IllegalStateException("Encrypted database verification failed.") }, null).use { encrypted ->
+                { _, _ -> throw IllegalStateException("Encrypted database verification failed.") }, null).use { encrypted ->
                 check(encrypted.version == version)
                 encrypted.rawQuery("PRAGMA integrity_check", emptyArray<String>()).use { c ->
                     check(c.moveToFirst() && c.getString(0) == "ok") { "Encrypted database verification failed." }

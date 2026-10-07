@@ -54,7 +54,7 @@ class SettingsStore(private val context: Context) {
     private fun cloudMessage(owner: String) = stringPreferencesKey("cloud_message:$owner")
     private fun ready(owner: String) = booleanPreferencesKey("cloud_ready:$owner")
     private fun revision(owner: String) = stringPreferencesKey("cloud_revision:$owner")
-    private fun skippedRestoreRevision(owner: String) = stringPreferencesKey("cloud_restore_skipped:$owner")
+    private fun skippedRestoreRevisionKey(owner: String) = stringPreferencesKey("cloud_restore_skipped:$owner")
     private fun profile(p: Preferences) = p[K.userId]?.let {
         UserProfile(it, p[K.email].orEmpty(), p[K.name].orEmpty(), p[K.photo], p[K.googleEmail])
     }
@@ -131,19 +131,19 @@ class SettingsStore(private val context: Context) {
         context.dataStore.edit { it[cloudMessage(owner)] = message }
     }
     suspend fun skippedRestoreRevision(owner: String): String {
-        return context.dataStore.data.first()[skippedRestoreRevision(owner)].orEmpty()
+        return context.dataStore.data.first()[skippedRestoreRevisionKey(owner)].orEmpty()
     }
     suspend fun setSkippedRestoreRevision(owner: String, value: String) {
         context.dataStore.edit { prefs ->
-            if (value.isBlank()) prefs.remove(skippedRestoreRevision(owner))
-            else prefs[skippedRestoreRevision(owner)] = value
+            if (value.isBlank()) prefs.remove(skippedRestoreRevisionKey(owner))
+            else prefs[skippedRestoreRevisionKey(owner)] = value
         }
     }
     suspend fun resetCloudState(owner: String, message: String) {
         context.dataStore.edit {
             it[ready(owner)] = false
             it.remove(revision(owner))
-            it.remove(skippedRestoreRevision(owner))
+            it.remove(skippedRestoreRevisionKey(owner))
             it[cloudTime(owner)] = System.currentTimeMillis()
             it[cloudMessage(owner)] = message
         }

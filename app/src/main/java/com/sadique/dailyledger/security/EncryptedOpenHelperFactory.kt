@@ -10,7 +10,7 @@ class EncryptedOpenHelperFactory(private val password: ByteArray) : SupportSQLit
     override fun create(configuration: SupportSQLiteOpenHelper.Configuration): SupportSQLiteOpenHelper {
         val helper = object : SQLiteOpenHelper(configuration.context, configuration.name, password, null,
             configuration.callback.version, 0,
-            { throw IllegalStateException("Database integrity check failed. The original file was preserved.") }, null, false) {
+            { _, _ -> throw IllegalStateException("Database integrity check failed. The original file was preserved.") }, null, false) {
             override fun onCreate(db: SQLiteDatabase) = configuration.callback.onCreate(db)
             override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = configuration.callback.onUpgrade(db, oldVersion, newVersion)
             override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = configuration.callback.onDowngrade(db, oldVersion, newVersion)

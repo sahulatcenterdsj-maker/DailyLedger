@@ -31,7 +31,7 @@ class DatabaseEncryptionTest {
             val before = file.readBytes()
             try {
                 SQLiteDatabase.openDatabase(file.path,"wrong".toByteArray(),null,SQLiteDatabase.OPEN_READONLY,
-                    { throw IllegalStateException("Preserved") },null).use { it.rawQuery("SELECT * FROM records",emptyArray<String>()).close() }
+                    { _, _ -> throw IllegalStateException("Preserved") },null).use { it.rawQuery("SELECT * FROM records",emptyArray<String>()).close() }
                 fail("Wrong key accepted")
             } catch (_: Exception) { }
             assertArrayEquals(before,file.readBytes())

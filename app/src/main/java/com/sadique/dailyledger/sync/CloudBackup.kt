@@ -79,6 +79,10 @@ class CloudBackup(private val context: Context, private val ownerId: String) {
             val remote = document.get(Source.SERVER).awaitResult()
             checkAccount()
             val state = settings.cloudState(ownerId)
+            if (!state.ready && !repo.hasRecords() && remote.exists()) {
+                settings.cloudStatus(ownerId, "Backup found. Choose Restore or Skip; no data was uploaded.")
+                return@withContext "Backup found. Waiting for your restore choice."
+            }
             val json = localJson()
             val format = remote.getLong("formatVersion") ?: 1L
             val localPlainHash = if (remote.exists() && format == 3L) {
@@ -295,7 +299,7 @@ class CloudBackup(private val context: Context, private val ownerId: String) {
         checkAccount()
         newStorageRef.putBytes(encrypted.ciphertext, metadata).awaitResult()
 
-        try {
+        BackupCommitProtocol.commit(writeMetadata = {
             firestore.runTransaction { transaction ->
                 checkAccount()
                 val current = transaction.get(document)
@@ -313,12 +317,7 @@ class CloudBackup(private val context: Context, private val ownerId: String) {
                 ))
                 nextRevision
             }.awaitResult()
-        } catch (e: Exception) {
-            // A timeout/cancellation can arrive AFTER commit. Deleting here could destroy the valid backup.
-            // Only an explicit revision conflict proves this transaction did not commit.
-            if (e is BackupConflictException) runCatching { newStorageRef.delete().awaitResult() }
-            throw e
-        }
+        }, removeRejectedUpload = { newStorageRef.delete().awaitResult() })
 
         // Old valid data is removed only after new encrypted metadata is committed.
         if (!oldStoragePath.isNullOrEmpty() && oldStoragePath != newStoragePath && validPath(oldStoragePath, expectedRevision.orEmpty())) {

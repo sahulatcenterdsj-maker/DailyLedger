@@ -64,7 +64,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { aiConsent = false },
             title = { Text(AiConsent.TITLE) },
-            text = { Text("Automatic suggestions send category totals and comparisons to Firebase AI. Auto Fill sends the text you enter. Account details and transaction notes are not included in summaries. Turn AI off here at any time.") },
+            text = { Text(AiConsent.TEXT) },
             confirmButton = { TextButton(onClick = { vm.setAiEnabled(true); aiConsent = false }) { Text("Enable AI") } },
             dismissButton = { TextButton(onClick = { aiConsent = false }) { Text("Cancel") } },
         )
