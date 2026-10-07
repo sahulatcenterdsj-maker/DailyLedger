@@ -38,7 +38,10 @@ class MainViewModel(app:Application,val ownerId:String):AndroidViewModel(app){
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
     fun clearError() { _error.value = null }
-    fun launch(block: suspend LedgerRepository.() -> Unit) = viewModelScope.launch {
+    fun launch(
+        onSuccess: () -> Unit = {},
+        block: suspend LedgerRepository.() -> Unit,
+    ) = viewModelScope.launch {
         try {
             BackupLock.mutex.withLock {
                 check(FirebaseRuntime.auth(getApplication<Application>()).currentUser?.uid == ownerId) {
@@ -46,6 +49,7 @@ class MainViewModel(app:Application,val ownerId:String):AndroidViewModel(app){
                 }
                 repo.block()
             }
+            onSuccess()
             SyncScheduler.syncNow(getApplication<Application>())
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) { _error.value = e.message ?: "Your change could not be saved. Please try again." }

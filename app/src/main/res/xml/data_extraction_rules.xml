@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="database" path="." />
-        <include domain="file" path="datastore" />
-        <exclude domain="sharedpref" path="secure_secrets.xml" />
-        <exclude domain="sharedpref" path="ai_preferences.xml" />
+        <!-- Prevent plaintext app state from bypassing the app's AES-GCM/KMS backup design. -->
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
-        <include domain="database" path="." />
-        <include domain="file" path="datastore" />
-        <exclude domain="sharedpref" path="secure_secrets.xml" />
-        <exclude domain="sharedpref" path="ai_preferences.xml" />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </device-transfer>
 </data-extraction-rules>

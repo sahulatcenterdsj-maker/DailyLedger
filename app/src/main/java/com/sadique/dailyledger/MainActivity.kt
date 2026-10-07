@@ -34,6 +34,14 @@ import com.sadique.dailyledger.ui.DailyLedgerTheme
 import com.sadique.dailyledger.ui.screens.LockedScreen
 import com.sadique.dailyledger.ui.screens.LoginScreen
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import com.sadique.dailyledger.data.AppDatabase
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.ui.unit.dp
 
 class MainActivity : FragmentActivity() {
     private val notifyPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -47,7 +55,14 @@ class MainActivity : FragmentActivity() {
             val settings = remember { SettingsStore(applicationContext) }
             val account = remember { AccountManager(this) }
             var sessionReady by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
+            var storageError by remember { mutableStateOf(false) }
+            var retry by remember { mutableStateOf(0) }
+            LaunchedEffect(retry) {
+                sessionReady = false; storageError = false
+                try {
+                    withContext(Dispatchers.IO) { AppDatabase.get(applicationContext).openHelper.writableDatabase }
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { storageError = true; return@LaunchedEffect }
                 try { account.restoreSession() }
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) { settings.clearUser() }
@@ -64,6 +79,10 @@ class MainActivity : FragmentActivity() {
             DailyLedgerTheme(current?.theme ?: "SYSTEM") {
                 Surface(Modifier.fillMaxSize()) {
                     when {
+                        storageError -> Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp)) {
+                            Text("Your local database could not be opened safely. Your files have not been erased. Do not clear app data unless you have a verified backup.")
+                            Button(onClick = { retry++ }) { Text("Retry") }
+                        }
                         current == null || !sessionReady -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                         current.user == null -> AuthGate()
                         current.biometric && !unlocked -> Locked { unlocked = true }
@@ -77,6 +96,12 @@ class MainActivity : FragmentActivity() {
                             cloudEnabled = current.cloudEnabled,
                             lastCloudSync = current.lastCloudSync,
                             cloudStatus = current.cloudStatus,
+                            weatherEnabled = current.weatherEnabled,
+                            weatherCity = current.weatherCity,
+                            weatherTemperature = current.weatherTemperature,
+                            weatherCondition = current.weatherCondition,
+                            weatherUpdatedAt = current.weatherUpdatedAt,
+                            transactionSounds = current.transactionSounds,
                             onLogout = {},
                         )
                     }

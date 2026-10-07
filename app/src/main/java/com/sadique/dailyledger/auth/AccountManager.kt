@@ -12,6 +12,7 @@ import com.sadique.dailyledger.data.AppDatabase
 import com.sadique.dailyledger.data.LedgerRepository
 import com.sadique.dailyledger.data.SettingsStore
 import com.sadique.dailyledger.security.SecureSecretStore
+import com.sadique.dailyledger.security.KeyManager
 import com.sadique.dailyledger.sync.BackupLock
 import com.sadique.dailyledger.sync.SyncScheduler
 import kotlinx.coroutines.sync.withLock
@@ -54,7 +55,9 @@ class AccountManager(private val context: Context) {
         catch (e: CancellationException) { throw e }
         catch (_: Exception) { }
         BackupLock.mutex.withLock {
+            val signedInUid = if (configured) FirebaseRuntime.auth(context).currentUser?.uid else null
             if (configured) FirebaseRuntime.auth(context).signOut()
+            signedInUid?.let { runCatching { KeyManager(context, it).clearLocalCache() } }
             SettingsStore(context).clearUser()
         }
     }

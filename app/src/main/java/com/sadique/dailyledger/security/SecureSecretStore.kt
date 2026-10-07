@@ -17,13 +17,15 @@ class SecureSecretStore(context: Context, ownerId: String) {
     private val suffix = MessageDigest.getInstance("SHA-256").digest(ownerId.toByteArray())
         .joinToString("") { "%02x".format(it) }
     private val alias = "daily_ledger_keystore"
-    private fun key(): SecretKey {
+    private val binding = ownerId.toByteArray(Charsets.UTF_8)
+    private fun key(create: Boolean = true): SecretKey = synchronized(keyLock) {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (ks.getKey(alias, null) as? SecretKey)?.let { return it }
+        (ks.getKey(alias, null) as? SecretKey)?.let { return@synchronized it }
+        check(create) { "Device encryption key is unavailable. Restore using your backup passkey." }
         val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
         gen.init(KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build())
-        return gen.generateKey()
+        gen.generateKey()
     }
     fun savePassphrase(value: String) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()) }
@@ -35,7 +37,7 @@ class SecureSecretStore(context: Context, ownerId: String) {
         val iv = prefs.getString(ivKey, null) ?: return null
         val data = prefs.getString(dataKey, null) ?: return null
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP)))
+            init(Cipher.DECRYPT_MODE, key(false), GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP)))
         }
         String(cipher.doFinal(Base64.decode(data, Base64.NO_WRAP)), Charsets.UTF_8)
     }.getOrNull()
@@ -46,4 +48,25 @@ class SecureSecretStore(context: Context, ownerId: String) {
         prefs.edit().remove("iv").remove("data").apply()
     }
     fun clear() { prefs.edit().remove("iv:$suffix").remove("data:$suffix").apply() }
+    /** Strict, durable storage for database / account keys. Never silently regenerate on failure. */
+    fun saveBytes(value: ByteArray) {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.ENCRYPT_MODE, key()); updateAAD(binding)
+        }
+        val blob = cipher.iv + cipher.doFinal(value)
+        check(prefs.edit().putString("v2:$suffix", Base64.encodeToString(blob, Base64.NO_WRAP)).commit()) {
+            "Could not save the device encryption key."
+        }
+    }
+    fun loadBytes(): ByteArray? {
+        val saved = prefs.getString("v2:$suffix", null) ?: return null
+        val blob = Base64.decode(saved, Base64.NO_WRAP)
+        require(blob.size >= 28) { "Device encryption key is damaged." }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.DECRYPT_MODE, key(false), GCMParameterSpec(128, blob, 0, 12)); updateAAD(binding)
+        }
+        return cipher.doFinal(blob, 12, blob.size - 12)
+    }
+    fun clearBytes() { check(prefs.edit().remove("v2:$suffix").commit()) }
+    companion object { private val keyLock = Any() }
 }

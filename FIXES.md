@@ -1,44 +1,14 @@
-# Login and account-backup update (1.1.0)
+# Current fixes included
 
-- Added Firebase-verified Google and email/password authentication, signup and reset email.
-- Added login-first routing for fresh/signed-out sessions; retained valid Firebase sessions.
-- Added private per-account Firestore snapshots, automatic work, initial restore and conflict protection.
-- Made Drive passphrases and sync metadata account-specific; kept optional encrypted Drive copies as manual actions.
-- Kept the same package/signing key and increased versionCode; added verified legacy Google-owner migration.
-- Added account-namespaced import IDs, full-snapshot validation and transactional restore.
-- Included server access rules, setup guides and actual backup-core tests.
-- Firebase configuration/deployment, full Android build, live service verification and device UI testing remain outstanding.
-
----
-
-Historical notes from the supplied ZIP follow; they describe the previous version, not new verification:
-
-# What was fixed
-
-Compile errors
-- `DailyLedgerApp.kt`: `NavigationBarItem` was called with positional args, so the label lambda landed in the
-  `modifier` slot (type mismatch). Now uses named arguments.
-- `Icons.Default.ReceiptLong` -> `Icons.AutoMirrored.Filled.ReceiptLong` (non-mirrored version is deprecated/removed).
-- `DashboardScreen.kt`: `sumOf(TransactionEntity::amountMinor)` is an ambiguous overload -> lambda; Long/Int literal mix fixed.
-- `TopAppBar` opt-in added; `getApplication()` type made explicit in `MainViewModel`.
-- `GoogleAuthManager`: no longer depends on `GoogleIdTokenCredential.uniqueId` (not present in all googleid versions);
-  reads the stable account id (`sub`) and email from the ID token.
-- `AppDatabase`: `exportSchema=false` (no schema directory configured).
-
-Runtime bugs
-- Drive upload used HTTP `PATCH`, which `HttpURLConnection` rejects -> now POST + `X-HTTP-Method-Override: PATCH`.
-- Settings screen had no way back (only "Sign out"); added Back button + system back handling, scrolling, insets.
-- Biometric lock: auto-prompts on launch, works on API 26-29, and never locks you out if the device has no screen lock.
-  Enabling it is refused if nothing is enrolled. No more flash of login/unlocked UI while settings load.
-- Exports: I/O moved off the main thread, works on Android 8-9 (MediaStore.Downloads is API 29+), no scientific-notation
-  amounts, PDF now includes all transactions (was capped at 80), CSV includes loan payments.
-- Input validation for dates/months/amounts (bad dates used to be saved and silently break filters and reminders).
-- Amount fields use a decimal keyboard; large amounts no longer show as `1.0E7` when editing.
-- Sync worker no longer retries forever when no passphrase is set.
-- Notification small icon is now a proper monochrome icon; adaptive launcher icon added.
-- Secure-prefs file excluded from Android backup (Keystore key can't be restored on another device).
-
-Build setup
-- Added the missing `gradle-wrapper.jar` and official `gradlew`.
-- Added `.github/workflows/build-apk.yml` (builds and uploads the APK).
-- Removed the machine-specific `local.properties` (Android Studio recreates it).
+- Migrated AI runtime to Firebase AI Logic (`firebase-ai`) with a current Gemini Flash model and structured response schemas.
+- App Check debug/release providers remain initialized at app startup; callable key Functions enforce App Check.
+- V1 backup restore now forces a fresh DEK for safe V2 migration.
+- V2 restore retries once with a freshly unwrapped DEK when the device cache is stale.
+- New/missing backup metadata can no longer reuse an unrelated cached DEK without a wrapped key.
+- Ciphertext upload / Firestore metadata commit order preserves the previous usable backup until the new revision commits and cleans failed new uploads.
+- Firestore and Storage rules validate owner paths, exact metadata fields and immutable encrypted objects.
+- Fresh empty devices show Backup found -> Restore / Skip instead of auto-restoring.
+- Delete Cloud Backup turns automatic backup off so it is not immediately recreated.
+- Sign-out clears the cached account DEK.
+- Removed obsolete server/build references and updated CI to current Firebase rules/Functions tests.
+- Added redesigned UI, selected-city weather, remaining-balance percentage/progress, and optional retro transaction sounds.

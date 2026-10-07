@@ -1,5 +1,7 @@
 package com.sadique.dailyledger.data
 
+import com.sadique.dailyledger.security.DatabaseEncryption
+import com.sadique.dailyledger.security.EncryptedOpenHelperFactory
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
@@ -43,7 +45,11 @@ class LedgerUpgradeTest {
             old.execSQL("INSERT INTO savings VALUES ('other:s','other','DIRECT',70000,'2026-10-01','',1)")
             old.version = 1
         }
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(AppDatabase.MIGRATION_1_2).build()
+        val password = "migration-test-key-32-bytes-long!!".toByteArray()
+        DatabaseEncryption.migrate(file, password)
+        assertFalse(DatabaseEncryption.isPlaintext(file))
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .openHelperFactory(EncryptedOpenHelperFactory(password)).addMigrations(AppDatabase.MIGRATION_1_2).build()
         try {
             val dao = db.ledgerDao()
             val committees = dao.committeesNow("owner") // Opening validates all migrated tables against Room's schema.

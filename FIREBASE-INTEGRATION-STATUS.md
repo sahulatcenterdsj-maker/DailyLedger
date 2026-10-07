@@ -1,16 +1,26 @@
+> Updated review: see `REVIEW-AND-SETUP.md` for v1.4.1 changes and the current verification status.
+
 # Firebase integration status
 
-Prepared project status:
+Project configuration in this repository:
 
-- `app/google-services.json` is included.
-- Firebase project: `daily-ledger-4d8ef`.
-- Android package: `com.sadique.dailyledger`.
-- Google Services Gradle plugin, Firebase BoM, Firebase Authentication and Cloud Firestore dependencies are already configured.
-- Firestore rules and indexes are included in the project.
-- Existing core backup tests pass (19 checks).
+- Firebase project: `daily-ledger-4d8ef`
+- Android package: `com.sadique.dailyledger`
+- `app/google-services.json` includes both Android and web OAuth client entries.
+- Firebase Android BoM: `34.19.0`
+- Firebase AI Logic dependency: `com.google.firebase:firebase-ai`
+- Current AI model constant: `gemini-3.5-flash-lite`
+- Firebase Auth, Firestore, Storage, Functions and App Check dependencies are configured.
+- Play Integrity App Check is used for distributed builds.
+- Firestore and Storage rules are deny-by-default outside owner-scoped backup paths.
+- Cloud Functions use App Check enforcement and parameterized `KMS_KEY_NAME` configuration.
 
-Important: the supplied Firebase config currently contains no OAuth client entry. Google Sign-In therefore still requires enabling the Google provider in Firebase Authentication, adding the app's SHA-1/SHA-256 fingerprints, and then downloading a fresh `google-services.json` from Firebase and replacing `app/google-services.json`.
+Still requiring owner-side cloud setup/deployment:
 
-Email/password authentication and Firestore also require their corresponding Firebase Console setup to be enabled/published.
+- Enable/configure Firebase AI Logic in the Firebase Console.
+- Register/enforce App Check and add debug token(s) for development devices.
+- Enable Cloud KMS, create the KEK, grant the Functions runtime service account encrypt/decrypt permission and deploy Functions.
+- Deploy Firestore/Storage rules.
+- Run the complete device test plan in `TESTING.md`.
 
-A full Android Gradle build could not be executed in the preparation environment because downloading the Gradle distribution was blocked by network access.
+A fresh Gradle build was not possible in the editing environment because `services.gradle.org` was unreachable.

@@ -5,6 +5,7 @@ import java.util.Objects;
 /** A stale or newly installed device must never overwrite an existing different backup. */
 public final class BackupPolicy {
     private BackupPolicy() {}
+    /** RESTORE means a remote backup is a restore candidate. Callers must ask the user before replacing local data. */
     public enum Decision { UPLOAD, RESTORE, UNCHANGED, CONFLICT }
     public static Decision decide(boolean initialized, boolean hasLocalRecords,
             String knownRevision, String remoteRevision, String localHash, String remoteHash) {

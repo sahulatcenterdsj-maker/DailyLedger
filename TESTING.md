@@ -1,59 +1,50 @@
-# Verification — Daily Ledger 1.3.0
+> Updated review: see `REVIEW-AND-SETUP.md` for v1.4.1 changes and the current verification status.
 
-## Completed automated checks
+# Testing Daily Ledger
 
-The [successful APK workflow run](https://github.com/sahulatcenterdsj-maker/DailyLedger/actions/runs/37481745184) built app version `1.3.0` / version code `4` from commit `d69e564ed5c3c74f3ae56fb64c7f7ef3a5996a80`.
+Run production testing only after Firebase AI Logic, App Check, Cloud KMS, Functions, Firestore rules and Storage rules are configured.
 
-- Shared AI backend: 13 Node tests passed, including signed-token verification, invalid claims/signatures, request/output validation, quotas, unavailable provider handling and absence of an AI chat route. Wrangler dry-run bundling passed.
-- Backup core: 19 Java checks passed using the production `BackupPolicy.java` and `SnapshotCodec.java` helpers.
-- Android JVM tests and APK/test-APK compilation passed.
-- Android emulator: 12 instrumentation tests passed, covering data upgrades, partial receiving, AI draft parsing/account isolation, atomic/idempotent saves and review UI.
-- APK package, version, checksum and signing certificate were checked. The signing certificate matches the preceding installed development build.
-- Wallet savings, Auto Fill review and spending-insight screenshots were inspected. Screenshots and generated report files are in the workflow artifacts.
+## Automated checks
 
-Backup-helper cases include new-account upload decisions, fresh-device restore decisions, local/remote conflicts, stale-device protection, intentional deletion of records, committed-write retry, deleted remote snapshots, Urdu round-trip, integrity hashes, damaged gzip and size/decompression limits. These are local automated checks, not production Firebase round trips.
+From the project root:
 
-The later endpoint-configuration change does not change the APK binary. Documentation-only changes do not rerun these Android checks or produce a new APK.
-
-## Live verification boundaries
-
-The owner confirmed that Firebase login works. On 7 October 2026 the owner also observed `ready:true` at `https://dailyledger.sadique6571.workers.dev/health`, and that public Worker root was added to the configuration read by app 1.3.0.
-
-`ready:true` only means a Groq key is configured. It does not test provider credentials, model availability, authenticated inference, quotas, or saving returned drafts. Live signed-in Auto Fill and automatic cloud suggestions are still pending device verification.
-
-Production Firestore rules/IAM, cross-account server access, current live backup/restore and Google Drive consent/passphrase recovery were not audited by this documentation update. Automated local tests do not establish those production guarantees. Firebase backups are admin-readable; optional Drive copies are passphrase-encrypted, as explained in [README.md](README.md).
-
-## Repeat local checks when changing the relevant code
-
-```sh
+```bash
+npm install
 npm test
-npm run check:worker
+npm --prefix functions install
+npm --prefix functions run lint
+npm --prefix functions test
 bash tests/run-core-tests.sh
 ./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest
-./gradlew connectedDebugAndroidTest
 ```
 
-The Worker dry-run requires installed npm dependencies. Android checks require the configured SDK/JDK; connected tests need an emulator/device. No live provider secret is needed for the automated backend fixture tests.
+`npm test` starts local Firestore + Storage emulators and verifies UID isolation, V1/V2 metadata validation, exact allowed fields, encrypted object ownership, content type, immutability and delete access. Functions tests cover authenticated UID derivation, 32-byte DEK validation, UID/version AAD, server-side metadata lookup, KMS configuration validation and the two `enforceAppCheck: true` callable declarations.
 
-## Firestore security-rule tests
+The Android/unit suite should additionally cover AES-GCM round trip/tamper/wrong key, AI parser rejection, totals, data upgrade/import and UI review flows. `LedgerRepository.importJson` performs restore inside a Room transaction.
 
-The supplied `tests/firestore-rules.test.mjs` is a separate emulator test suite. The APK workflow listed above does not execute it. Use a local demo project, not the production database:
+## One complete device test round
 
-```sh
-npm install --no-save firebase @firebase/rules-unit-testing firebase-tools
-npx firebase emulators:exec --only firestore --project demo-daily-ledger "node tests/firestore-rules.test.mjs"
-```
+Use a debug build with a registered App Check debug token. Then verify:
 
-These cases cover owner access, unauthenticated/cross-account access and invalid document writes. A local rules test does not prove which rules are currently deployed in production.
+- Email/password and Google sign-in.
+- Dashboard/UI, selected-city weather refresh and transaction sounds.
+- Add/edit/delete income and expense; confirm balance progress updates.
+- AI Auto Fill with Roman Urdu/Urdu/English; confirm drafts are editable and nothing saves before Review & Save.
+- AI saving suggestions and offline/local fallback.
+- First encrypted account backup, then a second changed backup.
+- Fresh second device: sign in to same account, confirm **Backup found** appears and no background auto-restore occurs; test Skip and Restore.
+- V1 legacy restore followed by successful V2 migration.
+- Two-device conflict: newer remote data must not be silently overwritten by stale local data.
+- Delete Cloud Backup: local records remain and automatic backup is turned off.
+- Sign out/account switch and sign back in; key recovery must come from authenticated Functions/KMS when local cache was cleared.
+- CSV/PDF export and optional manual Google Drive copy.
 
-## Device checks after configuration
+For stale-DEK recovery, create/rotate the account backup from another device while the first device still has its old cached key, then restore on the first device. It should refresh the server-wrapped key once and retry decryption exactly once. A genuinely damaged/tampered ciphertext must still fail after that retry.
 
-1. Sign in/sign up, verify invalid credentials stay on the login screen, and check password reset and Google picker cancellation.
-2. Add an income/expense, use **Back up now**, and check the successful account-backup status.
-3. On an empty second installation, sign in to the same account and verify all backed-up ledger collections, including kameti receipts, restore. Check account isolation.
-4. Test offline changes, reconnected backup, and automatic-backup off. With divergent edits on two phones, check that overwrite is blocked until an explicit restore/replace choice.
-5. Save an encrypted Drive copy, restore with its original passphrase, and verify a wrong passphrase leaves existing local records intact.
-6. Upgrade using the same signing identity without uninstalling; check existing records, multiple kameti shares and partial receiving history.
-7. Enable Cloud AI consent, generate Auto Fill drafts with a sample income/expense sentence, inspect/edit amounts and categories, and save only real records. Discard test drafts rather than adding them to the ledger.
-8. Check automatic cloud suggestions with recorded expenses and confirm the app remains usable if the provider is unavailable or quota is reached.
-9. Check themes, keyboard scrolling, biometric/device lock and account switching during pending backup or AI requests.
+## CI
+
+`.github/workflows/build-apk.yml` now tests Firebase rules, backup-key Functions, backup core, Android unit/instrumentation tests and APK signing/package identity. It tests the current Firebase-only architecture.
+
+## Environment limitation during this edit
+
+The editing environment could not reach `services.gradle.org`, so a fresh local Gradle distribution could not be downloaded here. Final Android compilation still needs Android Studio/CI or another machine with Gradle dependencies available.

@@ -23,7 +23,7 @@ public class BackupCoreTest {
     public static void main(String[] args) throws Exception {
         policy(BackupPolicy.Decision.UPLOAD, false, false, "", null, "empty", null, "new empty account");
         policy(BackupPolicy.Decision.UPLOAD, false, true, "", null, "local", null, "first backup of local data");
-        policy(BackupPolicy.Decision.RESTORE, false, false, "", "server-v1", "empty", "remote", "fresh phone restores first");
+        policy(BackupPolicy.Decision.RESTORE, false, false, "", "server-v1", "empty", "remote", "fresh phone detects remote backup first");
         policy(BackupPolicy.Decision.CONFLICT, false, true, "", "server-v1", "local", "remote", "never discard unsynced local records");
         policy(BackupPolicy.Decision.UPLOAD, true, true, "v1", "v1", "edited", "original", "normal edit backup");
         policy(BackupPolicy.Decision.UPLOAD, true, false, "v1", "v1", "empty", "original", "intentional delete-all remains deleted");

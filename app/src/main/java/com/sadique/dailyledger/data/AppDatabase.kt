@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.sadique.dailyledger.security.DatabaseEncryption
+import com.sadique.dailyledger.security.EncryptedOpenHelperFactory
 
 @Database(
     entities = [TransactionEntity::class, LoanEntity::class, LoanPaymentEntity::class, CommitteeEntity::class, CommitteePaymentEntity::class, CommitteeReceiptEntity::class, SavingEntity::class],
@@ -28,9 +30,15 @@ abstract class AppDatabase : RoomDatabase() {
 
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
-            INSTANCE ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "daily-ledger.db")
-                .addMigrations(MIGRATION_1_2)
-                .build().also { INSTANCE = it }
+            INSTANCE ?: run {
+                val file = context.getDatabasePath("daily-ledger.db")
+                val password = DatabaseEncryption.password(context.applicationContext, file)
+                DatabaseEncryption.migrate(file, password)
+                Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "daily-ledger.db")
+                    .openHelperFactory(EncryptedOpenHelperFactory(password))
+                    .addMigrations(MIGRATION_1_2)
+                    .build().also { INSTANCE = it }
+            }
         }
     }
 }
