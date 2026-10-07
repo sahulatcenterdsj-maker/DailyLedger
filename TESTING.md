@@ -1,37 +1,59 @@
-# Verification
+# Verification — Daily Ledger 1.3.0
 
-## Completed here
+## Completed automated checks
 
-`bash tests/run-core-tests.sh` compiled and ran the actual `BackupPolicy.java` and `SnapshotCodec.java` production helpers using Java 17: **19 checks passed**.
+The [successful APK workflow run](https://github.com/sahulatcenterdsj-maker/DailyLedger/actions/runs/37481745184) built app version `1.3.0` / version code `4` from commit `d69e564ed5c3c74f3ae56fb64c7f7ef3a5996a80`.
 
-Cases include new-account upload, fresh-device restore, local/remote conflicts, stale-device protection, intentional deletion of all records, retry after a committed write, deleted remote snapshots, UTF-8/Urdu round-trip, SHA-256 integrity, corrupted gzip, invalid encoding and size/decompression bounds.
+- Shared AI backend: 13 Node tests passed, including signed-token verification, invalid claims/signatures, request/output validation, quotas, unavailable provider handling and absence of an AI chat route. Wrangler dry-run bundling passed.
+- Backup core: 19 Java checks passed using the production `BackupPolicy.java` and `SnapshotCodec.java` helpers.
+- Android JVM tests and APK/test-APK compilation passed.
+- Android emulator: 12 instrumentation tests passed, covering data upgrades, partial receiving, AI draft parsing/account isolation, atomic/idempotent saves and review UI.
+- APK package, version, checksum and signing certificate were checked. The signing certificate matches the preceding installed development build.
+- Wallet savings, Auto Fill review and spending-insight screenshots were inspected. Screenshots and generated report files are in the workflow artifacts.
 
-Project XML/JSON/YAML and ZIP integrity were also checked during packaging.
+Backup-helper cases include new-account upload decisions, fresh-device restore decisions, local/remote conflicts, stale-device protection, intentional deletion of records, committed-write retry, deleted remote snapshots, Urdu round-trip, integrity hashes, damaged gzip and size/decompression limits. These are local automated checks, not production Firebase round trips.
 
-## Not completed here
+The later endpoint-configuration change does not change the APK binary. Documentation-only changes do not rerun these Android checks or produce a new APK.
 
-Full Android compilation and device/UI execution were blocked before dependency resolution: Gradle could not download because the execution environment's network was unavailable. No Firebase configuration was supplied. Real Google sign-in, signup/reset email, Firestore access-rule execution, Google Drive consent and live backup/restore have not been verified. No APK is included.
+## Live verification boundaries
 
-## Security-rule tests (local emulator only)
+The owner confirmed that Firebase login works. On 7 October 2026 the owner also observed `ready:true` at `https://dailyledger.sadique6571.workers.dev/health`, and that public Worker root was added to the configuration read by app 1.3.0.
 
-With Node and the Firebase Emulator Suite available, install test-only dependencies locally:
+`ready:true` only means a Groq key is configured. It does not test provider credentials, model availability, authenticated inference, quotas, or saving returned drafts. Live signed-in Auto Fill and automatic cloud suggestions are still pending device verification.
+
+Production Firestore rules/IAM, cross-account server access, current live backup/restore and Google Drive consent/passphrase recovery were not audited by this documentation update. Automated local tests do not establish those production guarantees. Firebase backups are admin-readable; optional Drive copies are passphrase-encrypted, as explained in [README.md](README.md).
+
+## Repeat local checks when changing the relevant code
+
+```sh
+npm test
+npm run check:worker
+bash tests/run-core-tests.sh
+./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest
+./gradlew connectedDebugAndroidTest
+```
+
+The Worker dry-run requires installed npm dependencies. Android checks require the configured SDK/JDK; connected tests need an emulator/device. No live provider secret is needed for the automated backend fixture tests.
+
+## Firestore security-rule tests
+
+The supplied `tests/firestore-rules.test.mjs` is a separate emulator test suite. The APK workflow listed above does not execute it. Use a local demo project, not the production database:
 
 ```sh
 npm install --no-save firebase @firebase/rules-unit-testing firebase-tools
 npx firebase emulators:exec --only firestore --project demo-daily-ledger "node tests/firestore-rules.test.mjs"
 ```
 
-The included 9 rule cases cover owner access, unauthenticated access, cross-account access and invalid document writes. The demo project uses the local emulator and must not be replaced by a production deployment command for this test. These tests are supplied but were not executed here.
+These cases cover owner access, unauthenticated/cross-account access and invalid document writes. A local rules test does not prove which rules are currently deployed in production.
 
-## Android smoke checks after Firebase setup
+## Device checks after configuration
 
-1. Fresh install: login page; wrong password and bad signup input show errors without opening the ledger.
-2. Sign up with email/password; add an income and expense; force an account backup and confirm its success status.
-3. Sign out, sign in again, reset password by email, and verify account continuity.
-4. Google sign-in first creates an account; subsequent sign-in returns to the same UID. Canceling the Google picker keeps the login screen.
-5. Second device: same account, empty local DB, online initial check restores all six ledger collections. A different account cannot see the first account's data.
-6. Offline change: records remain local; backup runs after connectivity returns. Disable automatic backup and check that new automatic requests do not upload.
-7. Two devices with divergent edits: stale upload is blocked. Restore/replace choices require confirmation; canceling leaves the data unchanged.
-8. Google Drive: save an encrypted copy, restore with correct passphrase, reject wrong passphrase without clearing local records.
-9. Upgrade without uninstalling from the same signed debug app: Google local records migrate after verified Google login; check old offline profiles using the guide.
-10. Check dark mode, small-screen keyboard scrolling, fingerprint lock, and sign-out/account switching during a pending backup.
+1. Sign in/sign up, verify invalid credentials stay on the login screen, and check password reset and Google picker cancellation.
+2. Add an income/expense, use **Back up now**, and check the successful account-backup status.
+3. On an empty second installation, sign in to the same account and verify all backed-up ledger collections, including kameti receipts, restore. Check account isolation.
+4. Test offline changes, reconnected backup, and automatic-backup off. With divergent edits on two phones, check that overwrite is blocked until an explicit restore/replace choice.
+5. Save an encrypted Drive copy, restore with its original passphrase, and verify a wrong passphrase leaves existing local records intact.
+6. Upgrade using the same signing identity without uninstalling; check existing records, multiple kameti shares and partial receiving history.
+7. Enable Cloud AI consent, generate Auto Fill drafts with a sample income/expense sentence, inspect/edit amounts and categories, and save only real records. Discard test drafts rather than adding them to the ledger.
+8. Check automatic cloud suggestions with recorded expenses and confirm the app remains usable if the provider is unavailable or quota is reached.
+9. Check themes, keyboard scrolling, biometric/device lock and account switching during pending backup or AI requests.
