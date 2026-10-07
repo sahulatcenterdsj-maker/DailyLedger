@@ -1,8 +1,12 @@
-# Daily Ledger 1.4.1 architecture
+# Daily Ledger 1.5.1 architecture
 
 ## Device and identity
 
 Firebase Authentication provides Google/email sign-in. Firebase UID scopes ledger rows and backup permissions; it is not a secret and is never used as encryption key material. SQLCipher encrypts the Room database using a random device key wrapped in Android Keystore. Existing plaintext databases are checkpointed, exported to a verified encrypted temporary file, and atomically replaced. Corruption/open failures preserve the file and stop startup safely. Android automatic backup/device transfer is excluded; account backup is the recovery route.
+
+## Ledger model
+
+Room schema 4 adds loan contacts, payment methods and committee members. All owner migration, deletion and JSON backup flows include these records. Ledger JSON format 3 is independent of cloud envelope V3: formats 1/2 remain importable. Loan overpayment and duplicate/personal-limit kameti turns are rejected transactionally. Marking a member turn received updates its schedule status; the actual payout amount is recorded separately through Receive amount.
 
 ## Cloud account backup
 
@@ -19,7 +23,9 @@ A fresh empty phone asks Restore / Skip. Local edits with a different remote rev
 
 ## AI and external requests
 
-Gemini through Firebase AI Logic provides reviewed Auto Fill and suggestions only. Fresh opt-in consent, Auth/App Check preflight, bounded generation, account/consent rechecks and local parsing guard the workflow. Built-in category aggregates may be sent; custom labels, identity and transaction notes are excluded from automatic summaries. Auto Fill sends the text the user enters. Cached suggestions are Keystore-encrypted.
+The offline rules engine handles common income/expense drafts and calculates spending insights on-device with no API. It normalizes grouped rupees and Urdu digits, accepts k/hazar/lakh forms, and rejects ambiguous batches as a whole instead of dropping lines. Loan, saving and kameti requests stay in their dedicated ledgers.
+
+Optional Gemini through Firebase AI Logic handles fallback Auto Fill and additional suggestions only. Fresh opt-in consent, Auth/App Check preflight, bounded generation, account/consent rechecks and local parsing guard the workflow. Built-in category aggregates may be sent; custom labels, identity and transaction notes are excluded from automatic summaries. Only Auto Fill text unrecognized locally is sent to the enabled cloud fallback. Cached suggestions are Keystore-encrypted.
 
 Play Integrity is used for the distributed APK; no shared debug token. AI limits in the app are local convenience controls, while Firebase/model quotas remain separate. KMS Functions additionally enforce 30 key operations per account per UTC day. Optional city weather calls Open-Meteo without GPS permission.
 

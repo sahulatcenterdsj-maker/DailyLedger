@@ -1,10 +1,16 @@
-# Daily Ledger 1.4.1 review
+# Daily Ledger 1.5.1 review
 
 The uploaded project is a useful native finance app foundation. Salary/expense tracking, separate savings and kameti totals, partial committee receipts, reviewed AI entry, themes, weather and optional transaction sounds are retained. It is a personal ledger, not a bank integration or accounting/tax compliance product.
 
+## Version 1.5 features
+
+The new ZIP adds offline quick-entry parsing and finance insights, borrowed/lent loan contact actions and payment methods/history, and kameti member turns with contact picking and reminders. Core offline behavior needs no AI key or paid API. The parser is a focused rules engine, not an on-device LLM; complex wording needs manual entry or optional cloud fallback.
+
+Review changes also prevent silent batch truncation, parse grouped rupees and Urdu digits, use category names from the ledger, preserve full loan history, make loan forms scrollable, and avoid contact-action crashes when another app is unavailable. Essential food is excluded from optional-spending reduction estimates and future-dated savings are excluded from current progress.
+
 ## Issues corrected
 
-- Added SQLCipher encryption for the local Room ledger, with a random key protected by Android Keystore. Existing plaintext databases migrate on a temporary encrypted file, are verified, and are atomically replaced. Failure does not erase the original. Room schema version remains 2.
+- Added SQLCipher encryption for the local Room ledger, with a random key protected by Android Keystore. Existing plaintext databases migrate on a temporary encrypted file, are verified, and are atomically replaced. Failure does not erase the original. Room schema version is 4, with additive migrations for contacts, payment methods and structured kameti members. Ledger JSON format is 3; imports still accept formats 1 and 2.
 - Added a non-deleting SQLCipher corruption handler and startup retry screen. Android's automatic backup remains excluded because device keys cannot be copied to another phone.
 - Fixed a backup data-loss risk: an ambiguous Firestore timeout must not delete the newly uploaded ciphertext, because the transaction may already have committed.
 - Cloud backup deletion now compares the observed revision transactionally. It cannot silently delete a newer backup from another device.
@@ -23,7 +29,7 @@ Blaze billing is required for this backend. Storage/Functions may have no-cost a
 
 Required owner setup:
 
-1. Enable Firebase AI Logic (Gemini Developer API) and configure Android App Check / Play Integrity. For APK distribution outside Play, use Firebase's documented outside-Play provider settings; do not require PLAY_RECOGNIZED or LICENSED verdicts. Keep device integrity checks enabled.
+1. For optional cloud AI only, enable Firebase AI Logic (Gemini Developer API) and configure Android App Check / Play Integrity. For APK distribution outside Play, use Firebase's documented outside-Play provider settings; do not require PLAY_RECOGNIZED or LICENSED verdicts. Keep device integrity checks enabled.
 2. Decide whether to enable Blaze. If approved, follow `KMS-SETUP.md`, then deploy Functions, Firestore and Storage rules. Do not delete/disable the KMS key versions while backups depend on them.
 3. On two real phones, verify same-account backup/restore, an account mismatch, cancelled restore, offline edits and a changed remote revision.
 

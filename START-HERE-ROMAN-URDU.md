@@ -1,6 +1,6 @@
-# Daily Ledger 1.4.1
+# Daily Ledger 1.5.1
 
-Yeh APK income/kharcha, savings, loans aur kameti ke liye hai. Salary se monthly kharcha minus hota hai; savings aur kameti alag totals hain. Partial kameti receiving, themes, city weather aur optional sounds bhi shamil hain.
+Yeh APK income/kharcha, savings, loans aur kameti ke liye hai. Salary se monthly kharcha minus hota hai; savings aur kameti alag totals hain. Partial kameti receiving, members ke turns/contacts, qarz ki payment history, themes, city weather aur optional sounds bhi shamil hain.
 
 ## Update
 
@@ -8,7 +8,7 @@ Nayi APK purani app ke upar install karein. Update ke liye data clear ya uninsta
 
 ## Backup
 
-Isi login ID se naye phone par Restore / Skip milega. Account backup ke liye alag passphrase nahi mangi jati. Random key data encrypt karti hai; user ID sirf account ki pehchan hai. Backend Functions + KMS login verify karke key recover karta hai.
+Jab cloud setup tayyar ho aur backup successfully save ho, isi login ID se naye phone par Restore / Skip milega. Account backup ke liye alag passphrase nahi mangi jati. Random key data encrypt karti hai; user ID sirf account ki pehchan hai. Backend Functions + KMS login verify karke key recover karta hai.
 
 Is ZIP ka cloud backup Blaze billing mangta hai. Abhi billing enable ya cloud setup deploy hone ka dawa nahi kiya gaya. Pehle app ka last successful backup status check karein. Automatic backup ON hona backup save hone ki guarantee nahi.
 
@@ -16,6 +16,8 @@ Firebase console mein naye backup ka encrypted data aur metadata hota hai. Magar
 
 ## AI
 
-Chat nahi hai: sirf suggestions aur review wali Auto Fill. Firebase AI Logic aur Play Integrity App Check console mein configure karne honge. AI enable karte waqt data-sharing consent parhein. AI suggestion ya entry ghalat ho sakti hai; save se pehle review karein. Free/paid usage project ke billing plan aur quota par depend karti hai.
+Chat nahi hai: sirf suggestions aur review wali Auto Fill. Common entries phone par offline parse hoti hain: `aj dodh 150 papar 100 sabzi 100` ya `salary 60,000 aur petrol 2k`. Iske liye internet, API key ya billing nahi chahiye. Yeh chhota rules engine hai, bara language model nahi. Har amount/category/date save se pehle check karein.
+
+Sirf optional Cloud AI ke liye Firebase AI Logic aur Play Integrity App Check console mein configure karne honge. AI enable karte waqt data-sharing consent parhein. AI suggestion ya entry ghalat ho sakti hai; save se pehle review karein. Free/paid usage project ke billing plan aur quota par depend karti hai.
 
 `REVIEW-AND-SETUP.md` mein review aur next setup steps hain. `KMS-SETUP.md` backend ki paid setup details aur `FIREBASE-AI-SETUP.md` AI configuration batata hai.

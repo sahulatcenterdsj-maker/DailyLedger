@@ -2,14 +2,14 @@
 
 ## Android Studio
 
-1. Extract the project ZIP and open the `DailyLedger-main` folder that contains `settings.gradle.kts`.
+1. Extract the project ZIP and open the project folder that contains `settings.gradle.kts`.
 2. Keep the configured `app/google-services.json` in place (or replace it only with a fresh file for the same Firebase Android app).
-3. Let Gradle sync and install the Android SDK components requested by the project (`compileSdk 35`).
+3. Let Gradle sync and install the Android SDK components requested by the project (`compileSdk 37; targetSdk 36; minSdk 26`).
 4. Build the debug APK. Output: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Terminal
 
-Use Java 17 and an Android SDK.
+Use Java 21 and an Android SDK.
 
 ```bash
 chmod +x gradlew
@@ -22,6 +22,4 @@ chmod +x gradlew
 
 The included workflow tests Firebase rules and Functions, runs backup-core tests, builds/tests Android, verifies package/signing identity, and uploads `DailyLedger.apk`.
 
-## Current edit environment
-
-This editing environment could not reach `services.gradle.org`, so it could not download the Gradle distribution. Use Android Studio or CI for the final compile/device pass.
+Use the signed CI artifact to update the previously supplied app. The version is 1.5.1 (code 7); package and development signer are unchanged. Do not uninstall or clear app data to install this update. Test reports include data migration, encryption, offline parsing and UI review.

@@ -37,6 +37,8 @@ Kameti supports structured member turns in addition to legacy schedule text. Eac
 
 The app validates duplicate turns and limits the user's own turns according to the committee share count. It shows the user's upcoming turn and a countdown, member payment/receiving status, and member Call/SMS/WhatsApp actions.
 
+Marking a member turn received updates the schedule status only. Use **Receive amount** to record your actual payout and partial amounts.
+
 Kameti installments and receipts keep histories and payment methods. Reminder notifications cover due loan payments, kameti installments and the user's approaching kameti turn.
 
 ## Compatibility

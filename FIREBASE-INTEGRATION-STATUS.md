@@ -1,6 +1,8 @@
-# Firebase integration status — 1.4.1
+# Firebase integration status — 1.5.1
 
-Project: `daily-ledger-4d8ef`; package: `com.sadique.dailyledger`; versionCode: 6.
+Project: `daily-ledger-4d8ef`; package: `com.sadique.dailyledger`; versionCode: 7.
+
+Offline Mini AI parses common entries and calculates local spending insights without contacting a cloud provider.
 
 Implemented in source: Firebase Auth, Firestore metadata, Storage ciphertext, callable KMS Functions, Firebase AI Logic (`gemini-3.5-flash-lite`), Play Integrity App Check, encrypted device database and encrypted AI/key caches. No Cloudflare/Groq request remains in the Android app. Historical backend files in the repository may remain for older APKs.
 

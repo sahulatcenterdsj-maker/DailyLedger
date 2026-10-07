@@ -1,12 +1,28 @@
-> Updated review: see `REVIEW-AND-SETUP.md` for v1.4.1 changes and the current verification status.
+# Testing Daily Ledger 1.5.1
 
-# Testing Daily Ledger
+## Automated release verification
 
-Run production testing only after Firebase AI Logic, App Check, Cloud KMS, Functions, Firestore rules and Storage rules are configured.
+Build `919ecaa` compiled and passed JVM tests plus all **16 Android device tests** on 2026-10-07. Its artifact stage was blocked by a screenshot shell-script error; the corrected packaging build is pending.
 
-## Automated checks
+Local execution: 19 Java backup-core checks and 11 Cloud Function handler checks passed on 2026-10-07. Firebase security rules and full Android compilation/instrumentation run in GitHub Actions.
 
-From the project root:
+The automated suite covers:
+
+- Firestore/Storage owner isolation, V3-only client writes, metadata/path binding, content bounds, immutable encrypted objects and deletion.
+- Function Auth/App Check declarations, anonymous rejection, UID/version KMS context and revision/fingerprint matching.
+- Backup policies, stale revision conflicts, interrupted/ambiguous commits and no deletion of a potentially committed upload.
+- AES-GCM round trip, wrong key/tampering, UID/revision binding and keyed change detection.
+- Local database encryption, interrupted migration/retry, wrong-key preservation and Keystore namespace separation.
+- Real schema 1 → 4 migration with existing records; legacy JSON restore; new loan contact/payment fields and member turns through account-isolated export/import; invalid import rollback.
+- Loan overpayment/settlement, duplicate or excessive personal kameti turns, partial receiving and related-record deletion.
+- Offline parsing of Roman Urdu, Urdu digits, grouped rupees and k/hazar amounts; ambiguous/dedicated/more-than-10-entry batches are not silently dropped.
+- Salary/expense separation, optional-spend estimates, past-month comparisons, owner/date filtering and future savings exclusion.
+- Cloud request timeouts, account/consent changes, safe failures and structured-output checks.
+- Android review/edit/save UI, offline entry without cloud consent, dashboard totals and partial kameti receiving.
+
+## Reproduce
+
+Use Java 21, Node 22 and the Android SDK specified in the Gradle files.
 
 ```bash
 npm install
@@ -16,35 +32,15 @@ npm --prefix functions run lint
 npm --prefix functions test
 bash tests/run-core-tests.sh
 ./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest
+./gradlew connectedDebugAndroidTest
 ```
 
-`npm test` starts local Firestore + Storage emulators and verifies UID isolation, V1/V2 metadata validation, exact allowed fields, encrypted object ownership, content type, immutability and delete access. Functions tests cover authenticated UID derivation, 32-byte DEK validation, UID/version AAD, server-side metadata lookup, KMS configuration validation and the two `enforceAppCheck: true` callable declarations.
+CI uses an Android 10 (API 29) emulator. It captures UI previews and verifies the APK package/signing certificate before publishing the installable artifact. These checks do not claim coverage on every Android device.
 
-The Android/unit suite should additionally cover AES-GCM round trip/tamper/wrong key, AI parser rejection, totals, data upgrade/import and UI review flows. `LedgerRepository.importJson` performs restore inside a Room transaction.
+## Live setup checks still required
 
-## One complete device test round
+The shared APK uses Play Integrity App Check, not a shared debug token. Configure the provider for installation outside Play as documented in `FIREBASE-AI-SETUP.md`. Do not disable production checks simply to make tests pass.
 
-Use a debug build with a registered App Check debug token. Then verify:
+After owner configuration, test Google/email login, optional Gemini inference, weather/contact handlers on a real phone, and same-account encrypted backup/restore on two devices. Verify Restore/Skip, offline edits, changed remote revisions, legacy backup upgrade to envelope V3 and deleted backups. Do not erase the only local copy to test recovery.
 
-- Email/password and Google sign-in.
-- Dashboard/UI, selected-city weather refresh and transaction sounds.
-- Add/edit/delete income and expense; confirm balance progress updates.
-- AI Auto Fill with Roman Urdu/Urdu/English; confirm drafts are editable and nothing saves before Review & Save.
-- AI saving suggestions and offline/local fallback.
-- First encrypted account backup, then a second changed backup.
-- Fresh second device: sign in to same account, confirm **Backup found** appears and no background auto-restore occurs; test Skip and Restore.
-- V1 legacy restore followed by successful V2 migration.
-- Two-device conflict: newer remote data must not be silently overwritten by stale local data.
-- Delete Cloud Backup: local records remain and automatic backup is turned off.
-- Sign out/account switch and sign back in; key recovery must come from authenticated Functions/KMS when local cache was cleared.
-- CSV/PDF export and optional manual Google Drive copy.
-
-For stale-DEK recovery, create/rotate the account backup from another device while the first device still has its old cached key, then restore on the first device. It should refresh the server-wrapped key once and retry decryption exactly once. A genuinely damaged/tampered ciphertext must still fail after that retry.
-
-## CI
-
-`.github/workflows/build-apk.yml` now tests Firebase rules, backup-key Functions, backup core, Android unit/instrumentation tests and APK signing/package identity. It tests the current Firebase-only architecture.
-
-## Environment limitation during this edit
-
-The editing environment could not reach `services.gradle.org`, so a fresh local Gradle distribution could not be downloaded here. Final Android compilation still needs Android Studio/CI or another machine with Gradle dependencies available.
+No billing upgrade, Functions/KMS deployment or live two-device cloud restore has been performed in this review. Offline Mini AI and the local ledger do not require that optional cloud setup.
