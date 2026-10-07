@@ -1,4 +1,4 @@
-# Daily Ledger: login aur account backup
+# Daily Ledger v1.3.0: login, account backup aur AI
 
 Is updated project mein:
 - App pehli dafa khulne par login page aata hai.
@@ -11,7 +11,7 @@ Is updated project mein:
 
 ## Pehle yeh samajh lo
 
-App ka code tayar hai. Asal login/online backup activate karne ke liye tumhara apna Firebase project connect karna baqi hai. Is ZIP mein kisi aur ka server, account ya fake Google configuration nahi dala gaya.
+Current v1.3.0 app Firebase project `daily-ledger-4d8ef` aur shared Cloudflare/Groq AI service ke liye configure hai. Apni fork/deployment banate waqt apna Firebase project, signing fingerprints aur service settings use karo. Neeche wali Firebase checklist fresh setup ya troubleshooting ke liye hai.
 
 Fresh installation par login page khulta hai. Successful login ke baad session yaad rehta hai; har launch par password dobara nahi dena hota. Settings se Sign out karne par login page phir khulta hai. Purane version ka offline bypass hata diya gaya hai.
 
@@ -23,7 +23,7 @@ Fresh installation par login page khulta hai. Successful login ke baad session y
 4. Authentication ke Sign-in method mein **Email/Password** aur **Google** enable karo. Google ke liye support email select karo.
 5. Cloud Firestore ka **Standard edition**, default database banao. Production mode use karo. Database location soch kar select karo.
 6. Firestore ke Rules tab mein is project ki `firestore.rules` file ka poora text paste karke Publish karo. Test mode ya public read/write rules mat lagao.
-7. Is prepared ZIP mein current **google-services.json** `DailyLedgerNative/app/google-services.json` mein already rakhi hui hai. Agar Google provider ya SHA fingerprints abhi enable/add nahi kiye, unhein Firebase Console mein set karne ke baad **google-services.json dobara download karke isi file ko replace** karna zaroori hai.
+7. Firebase Console se sahi project ki **google-services.json** download karke project ke `app/google-services.json` mein rakho. Google provider ya signing fingerprints badalne ke baad current configuration download karke build mein use karo.
 8. Android Studio mein project kholo, Gradle Sync karo, phir APK build karo. Configuration na ho to login screen dikhegi, lekin online login ke buttons disabled honge.
 
 Debug SHA-1:
@@ -48,6 +48,16 @@ Google account se login ke baad Settings mein Google Drive copy milti hai. Is ke
 
 Drive se restore ke liye wohi Google account aur wohi passphrase chahiye. Firebase password reset se Drive passphrase recover nahi hota.
 
+## Cloudflare aur AI
+
+App mein AI chat nahi; automatic saving suggestions aur reviewed Auto Fill hai. Basic spending observations offline chalti hain. Cloud AI use karne ke liye **Settings → Cloud AI → Enable AI** karo. Auto Fill ki entries review/edit karne ke baad **Save reviewed entries** se save hoti hain.
+
+Current server `https://dailyledger.sadique6571.workers.dev` hai. Owner ne 7 October 2026 ko `/health` par `ready:true` confirm kiya. Yeh sirf key configured hone ki tasdeeq hai; asal signed-in AI request ka test abhi alag karna hai.
+
+Cloudflare Worker ki **Settings → Runtime variables and secrets → Production → Add variable** mein Key `GROQ_API_KEY`, type **Secret**, aur Value mein Groq key do; phir **Add variable and deploy**. Build section wala secret running Worker ko available nahi hota. `FIREBASE_PROJECT_ID` app ke Firebase project se match hona chahiye aur `AI_QUOTA` Durable Object binding chahiye. Poori owner guide [backend/README.md](backend/README.md) mein hai.
+
+Users ko API key nahi deni parti. Automatic suggestions ke liye category totals/comparisons aur Auto Fill ke liye typed text Worker/Groq ko jata hai. Firebase ID token sirf Worker ko authentication ke liye jata hai. Is data handling aur admin access ki tafseel [README.md](README.md) mein hai.
+
 ## Free quota
 
 Firebase Spark mein email/password aur Google login, aur Firestore ki free usage quota milti hai. Unlimited storage ka wada nahi. Free quota khatam ho to cloud operation ruk sakta hai; phone ka local data rehta hai. Is app ka account snapshot compressed form mein 900,000 characters tak rakha gaya hai; bohat bara data ho to Drive copy/export use karo.
@@ -58,7 +68,7 @@ Purane Google account ka local data Firebase se usi Google identity ki tasdeeq k
 
 ## Verification
 
-Backup decision aur compression/integrity helpers ke 19 Java checks pass hue. Current Firebase Android configuration file project mein include kar di gayi hai. Full Android APK build aur live Firebase login yahan verify nahi ho sake kyun ke Gradle download network ki wajah se blocked tha. Google Sign-In ke liye Firebase Console mein Google provider + SHA fingerprints complete hone ke baad fresh google-services.json zaroori ho sakti hai. `TESTING.md` mein baqi checks hain.
+Version 1.3.0 ki Android APK build, backend checks, 19 Java backup checks aur Android data/UI checks GitHub CI mein pass hue. App ka package aur signing certificate previous APK se match karte hain. User ne Firebase login chalne ki tasdeeq ki hai. Production rules/IAM, live backup/restore aur signed-in AI inference ko in automated checks ka hissa na samjho; unki separate device verification chahiye. Details [TESTING.md](TESTING.md) mein hain.
 
 Official setup aur quota sources:
 - https://firebase.google.com/docs/android/setup
