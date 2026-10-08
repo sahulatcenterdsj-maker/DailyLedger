@@ -9,14 +9,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.sadique.dailyledger.data.CategoryCatalog
-@Composable fun CategoryPicker(type:String,onSelect:(String)->Unit,onDismiss:()->Unit){
+@Composable fun CategoryPicker(type:String,onSelect:(String)->Unit,onDismiss:()->Unit,allowCustom:Boolean=true){
     val context=LocalContext.current;val all=remember{CategoryCatalog.load(context)};var query by remember{mutableStateOf("")}
     val filtered=all.filter{it.type==type&&(query.isBlank()||it.label.contains(query,true)||it.group.contains(query,true)||it.aliases.any{a->a.contains(query,true)})}
     AlertDialog(onDismissRequest=onDismiss,title={Text("Choose category")},text={Column{
         OutlinedTextField(query,{query=it},label={Text("Search categories")},singleLine=true)
         LazyColumn(Modifier.heightIn(max=350.dp)){
             filtered.groupBy{it.group}.forEach{(group,rows)->item{Text(group,Modifier.padding(top=12.dp),style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)};items(rows,key={it.label}){r->Text(r.label,Modifier.fillMaxWidth().clickable{onSelect(r.label)}.padding(vertical=12.dp))}}
-            if(query.isNotBlank()&&filtered.none{it.label.equals(query.trim(),true)})item{TextButton(onClick={onSelect(query.trim().take(60))}){Text("Use custom: ${query.take(60)}")}}
+            if(allowCustom&&query.isNotBlank()&&filtered.none{it.label.equals(query.trim(),true)})item{TextButton(onClick={onSelect(query.trim().take(60))}){Text("Use custom: ${query.take(60)}")}}
         }
     }},confirmButton={TextButton(onClick=onDismiss){Text("Close")}})
 }
