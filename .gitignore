@@ -20,3 +20,4 @@ node_modules/
 !.dev.vars.example
 .env
 .env.*
+!functions/.env.example
