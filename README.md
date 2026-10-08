@@ -46,8 +46,8 @@ Cloud AI uses **Firebase AI Logic + Gemini**, authenticated through the existing
 
 `AI_APP_CHECK` identifies an app-attestation failure, not proof that a phone is uncertified. Release builds use Play Integrity. Private `debug` builds use individually registered test tokens and must not be distributed. Use **Settings → Check app verification**, then confirm Firebase registration, the actual signing SHA-256 and outside-Play settings. Never add a universal debug token or disable server enforcement to make AI appear to work.
 
-Source/CI checks do not prove a successful request to the live Firebase project. App Check/AI activation and KMS cloud recovery require a signed-in project owner to complete the console setup. This revision's Android verification results are recorded in TESTING.md when the build finishes.
+Source/CI checks do not prove a successful request to the live Firebase project. App Check/AI activation and KMS cloud recovery require a signed-in project owner to complete the console setup. Live console access in this review was blocked by a Cloud Browser 502 response; this is not a verified Firebase service outage. Current build results and remaining live checks are recorded in [TESTING.md](TESTING.md).
 
-## Previous verified APK
+## Verified APK
 
-Version **1.5.1** (code **7**) passed [CI and Android device tests](https://github.com/sahulatcenterdsj-maker/DailyLedger/actions/runs/37652728165): 40 unit tests, 16 Android tests, Firebase rules, Function handlers and backup-core checks. The signed APK keeps the earlier package/certificate for in-place updates. See [test results and checksum](TESTING.md). Live optional cloud services still need the owner setup described above.
+Version **1.6.1** (code **9**) passed [CI and Android device tests](https://github.com/sahulatcenterdsj-maker/DailyLedger/actions/runs/37755903942): 46 unit tests, 21 Android tests, Firebase rules, Function handlers and backup-core checks. The non-debuggable release keeps the earlier package/certificate for in-place updates. See [test results and checksum](TESTING.md). Live optional cloud services still need the owner setup described above.

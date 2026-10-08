@@ -1,8 +1,26 @@
-# v1.6.1 verification in progress
+# Testing Daily Ledger 1.6.1
 
-New gates: exact supplied dates, mixed dates, invalid/leap dates, Urdu digits/grouped money, repeated purchases, whole-batch rejection, specific categories, Udhar partial payment bounds, retry idempotency, account isolation and backup rollback. Android tests exercise encrypted schema upgrades, editable dates and the new settings/navigation UI. Release packaging checks prohibit a debuggable APK or Firebase debug provider.
+Verified on **2026-10-08**, build commit **4ba852eed63a99d0f1d859772f67f44686206286**:
+[successful GitHub Actions run](https://github.com/sahulatcenterdsj-maker/DailyLedger/actions/runs/37755903942).
 
-Locally passed: 19 Java backup-core checks and 11 Cloud Functions handler tests. Full Android CI and visual checks are pending for this revision; historical results below describe v1.5.1 only.
+- 46 JVM unit tests and 21 Android device tests passed, with no failures or skipped tests (Android 10 / API 29).
+- Firestore/Storage security-rule checks, 11 Cloud Functions handler tests and 19 Java backup-core checks passed.
+- Release APK package, version, existing signing certificate and non-debuggable status verified. The APK contains Play Integrity and excludes the Firebase debug App Check provider.
+- Dashboard, separate totals, reviewed Auto Fill, Udhar date review, Settings and More screen captures inspected for layout and readable content.
+
+New regression coverage includes supplied/mixed dates, invalid/leap dates, Urdu digits/grouped money, repeated purchases, whole-batch rejection, specific categories, Udhar partial/full payment bounds, retry idempotency, account isolation and transactional backup rollback. Device checks cover encrypted schema upgrades through version 5 and editing a purchase date before saving while retaining its separate due date. Existing backup conflict, corruption and recovery safeguards remain tested.
+
+APK: **1.6.1**, version code **9**, package `com.sadique.dailyledger`, **29,251,281 bytes**.
+
+SHA-256: `62dce88394d357677a94844354060ee0c4e460dc5ce1efe5339c985cc8f1e05f`.
+
+Install over the existing app using the same package/signature; do not clear data to update. The first two CI attempts exposed an unsupported category-picker argument and a stale 93-category test expectation. Both were corrected; the final run above passes all gates against the 105-category catalog.
+
+## Live service limits
+
+App Check diagnostics and provider separation are implemented, but live Firebase settings/inference could not be verified: this review's Cloud Browser returned 502 / connection refused while opening the Firebase/Google sign-in flow, including a fresh canonical Firebase tab. This does not establish an outage for the Firebase service itself or prove that the phone is uncertified.
+
+No billing change, paid resource provisioning or Functions/KMS deployment was performed. Same-account cloud recovery still requires owner activation and a real two-device check. Local encryption and offline quick entry do not depend on that optional cloud setup. See `FIREBASE-AI-SETUP.md` and `KMS-SETUP.md`.
 
 ---
 
@@ -51,7 +69,7 @@ npm --prefix functions install
 npm --prefix functions run lint
 npm --prefix functions test
 bash tests/run-core-tests.sh
-./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest
+./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest assembleRelease
 ./gradlew connectedDebugAndroidTest
 ```
 

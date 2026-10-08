@@ -1,8 +1,16 @@
-# Daily Ledger 1.5.1 review
+# Daily Ledger 1.6.1 review
 
 The uploaded project is a useful native finance app foundation. Salary/expense tracking, separate savings and kameti totals, partial committee receipts, reviewed AI entry, themes, weather and optional transaction sounds are retained. It is a personal ledger, not a bank integration or accounting/tax compliance product.
 
-## Version 1.5 features
+## Version 1.6.1 handoff integration
+
+The latest handoff is merged selectively into the encrypted project. It adds a separate Udhar Saman ledger with shops/contacts, purchase and due dates, partial payments, account-isolated backup/restore and reviewed offline entry. The catalog now has 105 categories with more specific item matching. It keeps repeated purchases and rejects an unclear or oversized batch instead of silently dropping entries.
+
+Quick entry honors explicit ISO, DD/MM/YYYY and named dates. Omitted years use the current year and omitted dates use today; invalid dates and ambiguous `kal` request correction. Each draft remains editable before saving, including separate purchase/due dates for Udhar. Udhar is tracked separately from cash expenses so it is not counted twice against salary.
+
+The aqua interface includes the scenic home header, salary-minus-expenses balance, separate savings/kameti totals, category chart, reviewed entry cards and accurate backup status. Savings use a wallet icon. The release is non-debuggable and excludes Firebase's debug App Check provider. Settings can test app verification without sending ledger entries; the actual Firebase console setup remains a separate step.
+
+## Retained version 1.5 features
 
 The new ZIP adds offline quick-entry parsing and finance insights, borrowed/lent loan contact actions and payment methods/history, and kameti member turns with contact picking and reminders. Core offline behavior needs no AI key or paid API. The parser is a focused rules engine, not an on-device LLM; complex wording needs manual entry or optional cloud fallback.
 
@@ -10,7 +18,7 @@ Review changes also prevent silent batch truncation, parse grouped rupees and Ur
 
 ## Issues corrected
 
-- Added SQLCipher encryption for the local Room ledger, with a random key protected by Android Keystore. Existing plaintext databases migrate on a temporary encrypted file, are verified, and are atomically replaced. Failure does not erase the original. Room schema version is 4, with additive migrations for contacts, payment methods and structured kameti members. Ledger JSON format is 3; imports still accept formats 1 and 2.
+- Added SQLCipher encryption for the local Room ledger, with a random key protected by Android Keystore. Existing plaintext databases migrate on a temporary encrypted file, are verified, and are atomically replaced. Failure does not erase the original. Room schema version is 5, with additive migrations for contacts, payment methods, structured kameti members and Udhar. Ledger JSON format is 4 and includes Udhar purchases/payments; older payloads remain readable. This is separate from the encrypted cloud envelope, which remains V3.
 - Added a non-deleting SQLCipher corruption handler and startup retry screen. Android's automatic backup remains excluded because device keys cannot be copied to another phone.
 - Fixed a backup data-loss risk: an ambiguous Firestore timeout must not delete the newly uploaded ciphertext, because the transaction may already have committed.
 - Cloud backup deletion now compares the observed revision transactionally. It cannot silently delete a newer backup from another device.
@@ -43,6 +51,6 @@ Gemini receives only the data stated in the app's separate consent; encrypted ba
 
 ## Verification status
 
-The [final CI run](https://github.com/sahulatcenterdsj-maker/DailyLedger/actions/runs/37652728165) passed: 40 JVM unit tests, 16 Android tests, Firestore/Storage rule checks, 11 Function handler checks, 19 Java backup-core checks and APK signing/package verification. The APK is v1.5.1 (code 7). Screen previews were inspected. Details and SHA-256 are in `TESTING.md`.
+The [final CI run](https://github.com/sahulatcenterdsj-maker/DailyLedger/actions/runs/37755903942) passed: 46 JVM unit tests, 21 Android tests, Firestore/Storage rule checks, 11 Function handler checks, 19 Java backup-core checks and release APK signing/package/provider verification. The APK is v1.6.1 (code 9). Screen previews were inspected. Details and SHA-256 are in `TESTING.md`.
 
-Live project AI inference and live two-device KMS restore require owner cloud setup and are not verified here. No paid resource provisioning or billing-plan change was performed.
+Live project AI inference and live two-device KMS restore require owner cloud setup and are not verified here. Cloud Browser returned 502 / connection refused at the Firebase/Google sign-in flow, so console settings could not be checked despite the reported owner login. No paid resource provisioning or billing-plan change was performed.

@@ -1,4 +1,4 @@
-> The verified v1.5.1 APK already encrypts its local ledger. Cloud backup code is implemented and tested, but live deployment and same-account restore still require the setup below. Configuration files alone do not activate the service. No new APK is needed for this server setup. See `REVIEW-AND-SETUP.md` for the current verification status.
+> The current APK encrypts its local ledger. Cloud backup code is implemented and tested, but live deployment and same-account restore still require the setup below. Configuration files alone do not activate the service. No further APK change is needed for this server setup. See `REVIEW-AND-SETUP.md` for the current verification status.
 
 # Cloud KMS + Firebase Functions setup
 
@@ -111,7 +111,7 @@ firebase deploy --project daily-ledger-4d8ef \
 
 Both callable key Functions declare `enforceAppCheck: true`. In Firebase Console, also register the Android app with App Check. Distributed builds use Play Integrity; no shared debug token is included.
 
-Use package `com.sadique.dailyledger`. The verified v1.5.1 development APK's signing certificate SHA-256 is:
+Use package `com.sadique.dailyledger`. The v1.6.1 release APK retains the existing development signing certificate for upgrades. Its SHA-256 is:
 
 ```text
 4C:22:14:C4:D4:B6:E3:8B:FA:81:44:F1:41:CC:24:A7:18:00:3F:55:20:41:06:17:76:6D:19:5C:CD:2D:23:1D
