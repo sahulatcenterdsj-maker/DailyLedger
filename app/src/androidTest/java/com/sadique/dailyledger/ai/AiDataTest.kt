@@ -22,7 +22,7 @@ import java.time.LocalDate
  }
  @Test fun privateSummaryAndConsentIsolation(){val row=TransactionEntity("secret-id","owner","EXPENSE",150000,"Fuel","private-note","2026-10-06",1,1);val json=AiProtocol.context(SpendingInsights.calculate("owner",listOf(row),LocalDate.parse("2026-10-06"))).toString();assertFalse(json.contains("secret-id"));assertFalse(json.contains("owner"));assertFalse(json.contains("private-note"));val a=AiPreferences(context,"test-a");val b=AiPreferences(context,"test-b");a.enabled=false;b.enabled=false;a.enabled=true;assertFalse(b.enabled);a.save("hash",listOf(SpendingTip("title","detail")));assertNotNull(a.cached("hash"));assertNull(b.cached("hash"));a.enabled=false;assertNull(a.cached("hash"))}
  @Test fun catalogAndGeminiSummaryPrivacy(){
-  val c=CategoryCatalog.load(context);assertEquals(93,c.size);assertEquals(93,c.map{it.label}.distinct().size);assertTrue(c.any{it.label=="Salary"&&it.type=="INCOME"})
+  val c=CategoryCatalog.load(context);assertEquals(105,c.size);assertEquals(105,c.map{it.label}.distinct().size);assertTrue(c.any{it.label=="Salary"&&it.type=="INCOME"})
   val rows=listOf(TransactionEntity("private-id","me","EXPENSE",10000,"Private person's bill","private note","2026-10-06",1,1),TransactionEntity("id2","me","EXPENSE",20000,"Another private name","","2026-10-06",1,1))
   val input=AiPrompts.insights(SpendingInsights.calculate("me",rows,LocalDate.parse("2026-10-06")),c).input
   assertFalse(input.contains("private",ignoreCase=true));assertFalse(input.contains("Another"));assertTrue(input.contains("Other expenses"));assertTrue(input.contains("300.00"))
