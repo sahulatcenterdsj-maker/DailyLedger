@@ -23,8 +23,8 @@ android {
         applicationId = "com.sadique.dailyledger"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.5.1"
+        versionCode = 9
+        versionName = "1.6.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigured.toString())
@@ -37,6 +37,14 @@ android {
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            // Keep the existing certificate for in-place upgrades. See FIREBASE-AI-SETUP.md.
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
         }
     }
 
@@ -71,6 +79,7 @@ dependencies {
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-ai")
     implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    debugImplementation("com.google.firebase:firebase-appcheck-debug")
     val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)

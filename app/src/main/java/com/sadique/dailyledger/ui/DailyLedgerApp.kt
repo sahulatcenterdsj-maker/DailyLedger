@@ -4,7 +4,16 @@ import com.sadique.dailyledger.ai.AiConsent
 import android.app.Application
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.sadique.dailyledger.ui.screens.MoreScreen
+import com.sadique.dailyledger.ui.screens.InsightsCard
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +52,7 @@ import com.sadique.dailyledger.sync.BackupInfo
 import com.sadique.dailyledger.ui.screens.AutoFillScreen
 import com.sadique.dailyledger.ui.screens.CommitteeScreen
 import com.sadique.dailyledger.ui.screens.DashboardScreen
+import com.sadique.dailyledger.ui.screens.CreditScreen
 import com.sadique.dailyledger.ui.screens.LoansScreen
 import com.sadique.dailyledger.ui.screens.SavingsScreen
 import com.sadique.dailyledger.ui.screens.SettingsScreen
@@ -82,6 +92,8 @@ fun DailyLedgerApp(
     )
     val tx by vm.transactions.collectAsState()
     val loans by vm.loans.collectAsState()
+    val credits by vm.creditPurchases.collectAsState()
+    val creditPayments by vm.creditPayments.collectAsState()
     val lp by vm.loanPayments.collectAsState()
     val committees by vm.committees.collectAsState()
     val cp by vm.committeePayments.collectAsState()
@@ -90,6 +102,7 @@ fun DailyLedgerApp(
     val savings by vm.savings.collectAsState()
     var tab by remember { mutableIntStateOf(0) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var remindersOpen by remember { mutableStateOf(false) }
     var autoFillOpen by remember(user.id) { mutableStateOf(false) }
     var aiConsent by remember(user.id) { mutableStateOf(false) }
     val aiEnabled by vm.aiEnabled.collectAsState()
@@ -199,13 +212,26 @@ fun DailyLedgerApp(
 
     val tabs = remember {
         listOf(
-            Tab("Home", Icons.Outlined.Dashboard, Icons.Default.Dashboard),
-            Tab("Transactions", Icons.AutoMirrored.Outlined.ReceiptLong, Icons.AutoMirrored.Filled.ReceiptLong),
-            Tab("Loans", Icons.Outlined.Handshake, Icons.Default.Handshake),
-            Tab("Kameti", Icons.Outlined.Groups, Icons.Default.Groups),
-            Tab("Savings", Icons.Outlined.AccountBalanceWallet, Icons.Default.AccountBalanceWallet),
+            Tab("Home", Icons.Rounded.Home, Icons.Rounded.Home),
+            Tab("Add", Icons.Rounded.AddCircle, Icons.Rounded.AddCircle),
+            Tab("Insights", Icons.Rounded.BarChart, Icons.Rounded.BarChart),
+            Tab("Savings", Icons.Rounded.AccountBalanceWallet, Icons.Rounded.AccountBalanceWallet),
+            Tab("More", Icons.Rounded.Apps, Icons.Rounded.Apps),
         )
     }
+    if (remindersOpen) {
+        val reminders = loans.filter { loan -> !loan.closed && loan.dueDate != null &&
+            loan.principalMinor > lp.filter { it.loanId == loan.id }.sumOf { it.amountMinor } }
+            .sortedBy { it.dueDate }.take(5).map { "${it.person} · ${it.dueDate}" } +
+            committeeMembers.filter { it.isMe && !it.received }.sortedBy { it.turnMonth }.take(5).map { "Kameti turn · ${it.turnMonth}" } +
+            credits.filter { !it.closed && it.dueDate != null }.sortedBy { it.dueDate }.take(5).map { "Udhar: ${it.creditor} · ${it.dueDate}" }
+        AlertDialog(onDismissRequest = { remindersOpen = false }, title = { Text("Your reminders") },
+            text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (reminders.isEmpty()) Text("No pending loan dates or personal kameti turns in your records.")
+                reminders.forEach { Text(it) }
+            } }, confirmButton = { TextButton(onClick = { remindersOpen = false }) { Text("Close") } })
+    }
+    BackHandler(enabled = !settingsOpen && tab != 0) { tab = 0 }
 
     BackHandler(enabled = settingsOpen) { settingsOpen = false }
 
@@ -228,6 +254,7 @@ fun DailyLedgerApp(
             weatherUpdatedAt = weatherUpdatedAt,
             transactionSounds = transactionSounds,
             onBack = { settingsOpen = false },
+            onOpenSavings = { settingsOpen = false; tab = 4 },
             onTheme = { scope.launch { settings.setTheme(it) } },
             onBiometric = { enable ->
                 if (enable && Biometrics.pick(context) == null) {
@@ -262,26 +289,35 @@ fun DailyLedgerApp(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Daily Ledger") },
-                modifier = Modifier.shadow(8.dp, RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)),
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
-                actions = {
-                    IconButton(onClick = { autoFillOpen = true }) { Icon(Icons.Outlined.AutoAwesome, "AI Auto Fill") }
-                    IconButton(onClick = { settingsOpen = true }) { Icon(Icons.Outlined.Settings, contentDescription = "Settings") }
-                },
-            )
+            LedgerBackdrop {
+                LedgerBrandHeader(
+                    subtitle = when (tab) {
+                        1 -> "All your transactions"; 2 -> "Borrowed & lent"; 3 -> "Your kameti, organized"
+                        4 -> "For a brighter tomorrow"; 5 -> "Understand your spending"; 6 -> "Everything in one place"; 7 -> "Udhar Saman"
+                        else -> "Your money, a brighter tomorrow"
+                    }, modifier = Modifier.statusBarsPadding(),
+                ) {
+                    IconButton(onClick = { tab = 1 }) { Icon(Icons.Rounded.Search, "Search transactions", Modifier.size(23.dp)) }
+                    IconButton(onClick = { if (tab == 6) settingsOpen = true else remindersOpen = true }) {
+                        Icon(if (tab == 6) Icons.Rounded.Settings else Icons.Rounded.NotificationsNone,
+                            if (tab == 6) "Settings" else "Reminders", Modifier.size(23.dp))
+                    }
+                }
+            }
         },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp) {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
                 tabs.forEachIndexed { i, t ->
-                    NavigationBarItem(
-                        selected = tab == i,
-                        onClick = { tab = i },
-                        icon = { Icon(if (tab == i) t.selectedIcon else t.icon, contentDescription = t.label) },
-                        label = { Text(t.label) },
-                    )
+                    val selected = when (i) { 0 -> tab == 0; 2 -> tab == 5; 3 -> tab == 4; 4 -> tab in listOf(1, 2, 3, 6, 7); else -> false }
+                    NavigationBarItem(selected = selected,
+                        onClick = { when (i) { 0 -> tab = 0; 1 -> autoFillOpen = true; 2 -> tab = 5; 3 -> tab = 4; else -> tab = 6 } },
+                        icon = { Icon(t.icon, t.label, Modifier.size(25.dp)) },
+                        label = { Text(t.label, fontSize = 10.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
+                        colors = NavigationBarItemDefaults.colors(selectedIconColor = LedgerColors.Teal, selectedTextColor = LedgerColors.Teal,
+                            indicatorColor = Color.Transparent, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant))
                 }
             }
         },
@@ -307,6 +343,7 @@ fun DailyLedgerApp(
                     onOpenSavings = { tab = 4 },
                     onOpenKameti = { tab = 3 },
                     onAutoFill = { autoFillOpen = true },
+                    onAllTransactions = { tab = 1 },
                     snapshot = snapshot,
                     aiTips = aiTips,
                     aiStatus = aiStatus,
@@ -344,11 +381,20 @@ fun DailyLedgerApp(
                     onDeleteMember = { member -> vm.launch { deleteCommitteeMember(member) } },
                     onDelete = { c -> vm.launch { deleteCommittee(c) } },
                 )
-                else -> SavingsScreen(
+                4 -> SavingsScreen(
                     savings = savings,
                     onAdd = { k, a, d, n -> vm.launch { saveSaving(k, a, d, n) } },
                     onDelete = { x -> vm.launch { deleteSaving(x) } },
                 )
+                5 -> LedgerBackdrop(Modifier.fillMaxSize()) {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Text("Your monthly insights", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        InsightsCard(snapshot, aiTips, aiStatus, aiEnabled) { aiConsent = true }
+                    }
+                }
+                7 -> CreditScreen(credits, creditPayments, vm::saveCreditDrafts, vm::saveCreditPayment,
+                    onDelete = { credit -> vm.launch { deleteCreditPurchase(credit) } })
+                else -> MoreScreen({ tab = 1 }, { tab = 2 }, { tab = 3 }, { tab = 4 }, { settingsOpen = true }, { tab = 7 })
             }
         }
     }

@@ -44,7 +44,7 @@ class OfflineMiniAiTest {
         assertNull(OfflineMiniAi.drafts((1..11).joinToString(", ") { "petrol 100" }))
         assertNull(OfflineMiniAi.drafts("doodh -150"))
         assertNull(OfflineMiniAi.drafts("doodh 1,50"))
-        assertNull(OfflineMiniAi.drafts("kal doodh 150"))
+        assertTrue(runCatching { OfflineMiniAi.drafts("kal doodh 150") }.exceptionOrNull() is AiException)
         assertNull(OfflineMiniAi.drafts("doodh 150 sabzi 100 total 250"))
     }
     @Test fun wordsDoNotMatchInsideNamesAndCategoryOrderIsSpecific() {

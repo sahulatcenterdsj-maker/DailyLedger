@@ -1,3 +1,11 @@
+# v1.6.1 verification in progress
+
+New gates: exact supplied dates, mixed dates, invalid/leap dates, Urdu digits/grouped money, repeated purchases, whole-batch rejection, specific categories, Udhar partial payment bounds, retry idempotency, account isolation and backup rollback. Android tests exercise encrypted schema upgrades, editable dates and the new settings/navigation UI. Release packaging checks prohibit a debuggable APK or Firebase debug provider.
+
+Locally passed: 19 Java backup-core checks and 11 Cloud Functions handler tests. Full Android CI and visual checks are pending for this revision; historical results below describe v1.5.1 only.
+
+---
+
 # Testing Daily Ledger 1.5.1
 
 ## Automated release verification

@@ -54,12 +54,47 @@
   },
   {
     "group": "Groceries",
-    "label": "Other groceries",
+    "label": "Groceries",
     "type": "EXPENSE",
     "aliases": [
       "rashan",
       "ration",
-      "grocery"
+      "grocery",
+      "groceries",
+      "monthly rashan",
+      "ghar ka rashan",
+      "kiryana",
+      "kirana",
+      "راشن"
+    ]
+  },
+  {
+    "group": "Groceries",
+    "label": "Dairy & breakfast",
+    "type": "EXPENSE",
+    "aliases": [
+      "dahi",
+      "yogurt",
+      "yoghurt",
+      "butter",
+      "makhan",
+      "cheese",
+      "paneer",
+      "jam",
+      "cream"
+    ]
+  },
+  {
+    "group": "Groceries",
+    "label": "Beverages",
+    "type": "EXPENSE",
+    "aliases": [
+      "juice",
+      "cold drink",
+      "soft drink",
+      "drink",
+      "sharbat",
+      "syrup"
     ]
   },
   {
@@ -67,7 +102,9 @@
     "label": "Milk",
     "type": "EXPENSE",
     "aliases": [
-      "doodh"
+      "doodh",
+      "milk",
+      "دودھ"
     ]
   },
   {
@@ -203,15 +240,6 @@
   },
   {
     "group": "Home",
-    "label": "Cleaning",
-    "type": "EXPENSE",
-    "aliases": [
-      "safai",
-      "detergent"
-    ]
-  },
-  {
-    "group": "Home",
     "label": "Domestic help",
     "type": "EXPENSE",
     "aliases": [
@@ -226,6 +254,55 @@
     "aliases": [
       "bartan",
       "kitchen"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Cleaning supplies",
+    "type": "EXPENSE",
+    "aliases": [
+      "safai",
+      "cleaning",
+      "detergent",
+      "surf",
+      "washing powder",
+      "bleach",
+      "phenyl",
+      "floor cleaner",
+      "harpic",
+      "toilet cleaner"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Dishwashing",
+    "type": "EXPENSE",
+    "aliases": [
+      "dishwash",
+      "dish wash",
+      "dishwashing",
+      "vim",
+      "bartan soap",
+      "bartan sabun",
+      "bartan liquid"
+    ]
+  },
+  {
+    "group": "Home",
+    "label": "Household essentials",
+    "type": "EXPENSE",
+    "aliases": [
+      "tissue",
+      "tissues",
+      "toilet roll",
+      "kitchen roll",
+      "foil",
+      "aluminium foil",
+      "garbage bag",
+      "trash bag",
+      "match box",
+      "machis",
+      "mosquito coil"
     ]
   },
   {
@@ -418,7 +495,12 @@
     "label": "School fees",
     "type": "EXPENSE",
     "aliases": [
-      "school",
+      "school fee",
+      "school fees",
+      "monthly fee",
+      "school ki fee",
+      "bachon ki fee",
+      "bache ki fee",
       "fees"
     ]
   },
@@ -446,7 +528,13 @@
     "type": "EXPENSE",
     "aliases": [
       "books",
-      "kitab"
+      "book",
+      "kitab",
+      "kitabein",
+      "textbook",
+      "textbooks",
+      "course book",
+      "کتاب"
     ]
   },
   {
@@ -455,8 +543,23 @@
     "type": "EXPENSE",
     "aliases": [
       "stationery",
+      "stationary",
       "pen",
-      "copy"
+      "pencil",
+      "copy",
+      "copies",
+      "notebook",
+      "register",
+      "eraser",
+      "rubber",
+      "sharpener",
+      "marker",
+      "highlighter",
+      "scale",
+      "ruler",
+      "geometry",
+      "geometry box",
+      "file folder"
     ]
   },
   {
@@ -478,12 +581,65 @@
     ]
   },
   {
+    "group": "Education",
+    "label": "Admission & exam fees",
+    "type": "EXPENSE",
+    "aliases": [
+      "admission fee",
+      "admission fees",
+      "exam fee",
+      "exam fees",
+      "paper fee",
+      "registration fee",
+      "annual charges",
+      "school charges"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "School uniform",
+    "type": "EXPENSE",
+    "aliases": [
+      "school uniform",
+      "uniform",
+      "school dress",
+      "school shoes",
+      "school belt",
+      "school tie",
+      "school socks"
+    ]
+  },
+  {
+    "group": "Education",
+    "label": "School projects & supplies",
+    "type": "EXPENSE",
+    "aliases": [
+      "school project",
+      "project material",
+      "chart",
+      "chart paper",
+      "colors",
+      "colour",
+      "crayons",
+      "glue",
+      "school bag",
+      "school bottle",
+      "lunch box",
+      "school supplies"
+    ]
+  },
+  {
     "group": "Children & family",
     "label": "Diapers & baby care",
     "type": "EXPENSE",
     "aliases": [
       "diaper",
-      "baby"
+      "diapers",
+      "baby",
+      "baby care",
+      "pampers",
+      "wipes",
+      "baby wipes"
     ]
   },
   {
@@ -521,6 +677,20 @@
     ]
   },
   {
+    "group": "Children & family",
+    "label": "Baby food & formula",
+    "type": "EXPENSE",
+    "aliases": [
+      "formula milk",
+      "baby formula",
+      "baby food",
+      "cerelac",
+      "lactogen",
+      "nan milk",
+      "baby cereal"
+    ]
+  },
+  {
     "group": "Personal care",
     "label": "Clothing",
     "type": "EXPENSE",
@@ -554,16 +724,12 @@
     "type": "EXPENSE",
     "aliases": [
       "cosmetic",
-      "makeup"
-    ]
-  },
-  {
-    "group": "Personal care",
-    "label": "Toiletries",
-    "type": "EXPENSE",
-    "aliases": [
-      "soap",
-      "shampoo"
+      "cosmetics",
+      "makeup",
+      "make up",
+      "lipstick",
+      "foundation",
+      "nail polish"
     ]
   },
   {
@@ -573,6 +739,75 @@
     "aliases": [
       "laundry",
       "dhobi"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Soap & body care",
+    "type": "EXPENSE",
+    "aliases": [
+      "soap",
+      "sabun",
+      "saban",
+      "saboon",
+      "body wash",
+      "shower gel",
+      "body lotion",
+      "lotion"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Shampoo & hair care",
+    "type": "EXPENSE",
+    "aliases": [
+      "shampoo",
+      "conditioner",
+      "hair oil",
+      "hair serum",
+      "hair cream",
+      "shampoo sachet"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Oral care",
+    "type": "EXPENSE",
+    "aliases": [
+      "toothpaste",
+      "tooth paste",
+      "toothbrush",
+      "tooth brush",
+      "manjan",
+      "mouthwash",
+      "mouth wash"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Sanitary & hygiene",
+    "type": "EXPENSE",
+    "aliases": [
+      "sanitary pad",
+      "sanitary pads",
+      "pads",
+      "napkin",
+      "sanitary napkin",
+      "tampon",
+      "personal hygiene",
+      "hand wash",
+      "handwash",
+      "sanitizer"
+    ]
+  },
+  {
+    "group": "Personal care",
+    "label": "Toiletries",
+    "type": "EXPENSE",
+    "aliases": [
+      "toiletries",
+      "personal care item",
+      "personal care items"
     ]
   },
   {

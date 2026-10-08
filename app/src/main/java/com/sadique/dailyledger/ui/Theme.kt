@@ -2,6 +2,14 @@ package com.sadique.dailyledger.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -55,12 +63,12 @@ private val AquaColors = lightColorScheme(
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFE0F2FE),
     tertiary = Color(0xFFECFEFF),
-    background = Color(0xFFF3F9FF),
-    onBackground = Color(0xFF10213A),
+    background = Color(0xFFF0F9FF),
+    onBackground = Color(0xFF0A1744),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF10213A),
+    onSurface = Color(0xFF0A1744),
     surfaceVariant = Color(0xFFF8FBFF),
-    onSurfaceVariant = Color(0xFF37506A),
+    onSurfaceVariant = Color(0xFF567094),
     outline = Color(0xFFE2E8F0),
     error = Color(0xFFEF4444),
 )
@@ -160,8 +168,8 @@ fun DailyLedgerTheme(
         "FOREST" -> ForestColors
         "ROSE" -> RoseColors
         "DARK" -> LedgerDarkColors
-        "LIGHT" -> LedgerLightColors
-        else -> if (dark) LedgerDarkColors else LedgerLightColors
+        "LIGHT" -> AquaColors
+        else -> if (dark) LedgerDarkColors else AquaColors
     }
     val readable = scheme.copy(
         primary = when (normalized) { "AQUA" -> Color(0xFF0369A1); "SUNSET" -> Color(0xFFB84308); "FOREST" -> Color(0xFF15803D); "ROSE" -> Color(0xFFBE185D); "MIDNIGHT" -> Color(0xFFC4B5FD); else -> scheme.primary },
@@ -173,5 +181,17 @@ fun DailyLedgerTheme(
         surfaceContainerHigh = lerp(scheme.surface, scheme.primaryContainer, 0.35f),
         surfaceContainerHighest = lerp(scheme.surface, scheme.primaryContainer, 0.45f),
         outline = lerp(scheme.onSurface, scheme.surface, 0.55f))
-    MaterialTheme(colorScheme = readable, content = content)
+    MaterialTheme(colorScheme = readable,
+        shapes = Shapes(small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(18.dp), large = RoundedCornerShape(24.dp)),
+        typography = Typography(
+            headlineLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 31.sp, lineHeight = 37.sp, letterSpacing = (-.6).sp),
+            headlineMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp),
+            headlineSmall = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
+            titleLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 19.sp, lineHeight = 25.sp),
+            titleMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+            titleSmall = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
+            bodyLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 14.sp, lineHeight = 21.sp),
+            bodyMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 13.sp, lineHeight = 19.sp),
+            bodySmall = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 11.sp, lineHeight = 16.sp)
+        ), content = content)
 }

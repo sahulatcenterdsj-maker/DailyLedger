@@ -12,6 +12,8 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
     val transactions = dao.observeTransactions(ownerId)
     val loans = dao.observeLoans(ownerId)
     val loanPayments = dao.observeLoanPayments(ownerId)
+    val creditPurchases = dao.observeCreditPurchases(ownerId)
+    val creditPayments = dao.observeCreditPayments(ownerId)
     val committees = dao.observeCommittees(ownerId)
     val committeePayments = dao.observeCommitteePayments(ownerId)
     val committeeReceipts = dao.observeCommitteeReceipts(ownerId)
@@ -64,6 +66,52 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
         LocalDate.parse(date)
         dao.upsertLoanPayment(LoanPaymentEntity(newId(), ownerId, loanId, amountMinor, date, note.trim(), System.currentTimeMillis(), method.trim().ifBlank { "Cash" }))
         if (amountMinor == remaining) dao.upsertLoan(loan.copy(closed = true))
+    }
+
+    suspend fun saveCreditPurchase(
+        creditor: String,
+        item: String,
+        amountMinor: Long,
+        category: String,
+        purchaseDate: String,
+        dueDate: String?,
+        note: String,
+        phone: String = "",
+        whatsapp: String = "",
+    ) {
+        val draft = CreditDraft(creditor, item, amountMinor, category, purchaseDate, dueDate, note, phone, whatsapp).validated()
+        dao.upsertCreditPurchase(draft.entity(newId(), ownerId, System.currentTimeMillis()))
+    }
+
+    suspend fun deleteCreditPurchase(item: CreditPurchaseEntity) = db.withTransaction {
+        require(item.ownerId == ownerId)
+        dao.deleteCreditPayments(ownerId, item.id)
+        dao.deleteCreditPurchase(item)
+    }
+
+    suspend fun saveCreditDrafts(drafts: List<CreditDraft>, batchId: String) = db.withTransaction {
+        require(drafts.size in 1..10) { "Save 1 to 10 udhar records at a time." }
+        UUID.fromString(batchId)
+        val now = System.currentTimeMillis()
+        val rows = drafts.mapIndexed { i, draft -> draft.validated().entity("$ownerId:credit-ai-$batchId-$i", ownerId, now) }
+        val ids = rows.map { it.id }.toSet()
+        val existing = dao.creditPurchasesNow(ownerId).filter { it.id in ids }
+        if (existing.isNotEmpty()) {
+            require(existing.size == rows.size && rows.all { row ->
+                existing.any { old -> old.copy(createdAt = row.createdAt, closed = false) == row }
+            }) { "These udhar drafts were already saved. Start a new entry." }
+        } else dao.insertCreditPurchases(rows)
+    }
+
+    suspend fun addCreditPayment(creditId: String, amountMinor: Long, date: String, note: String, method: String = "Cash") = db.withTransaction {
+        val credit = requireNotNull(dao.creditPurchaseNow(ownerId, creditId)) { "This udhar record no longer exists." }
+        val paid = dao.creditPaymentsNow(ownerId).filter { it.creditId == creditId }.sumOf { it.amountMinor }
+        val remaining = (credit.amountMinor - paid).coerceAtLeast(0L)
+        require(remaining > 0L) { "This udhar is already fully paid." }
+        require(amountMinor in 1..remaining) { "Payment cannot be more than the remaining ${remaining / 100.0} PKR balance." }
+        LocalDate.parse(date)
+        dao.upsertCreditPayment(CreditPaymentEntity(newId(), ownerId, creditId, amountMinor, date, note.trim(), System.currentTimeMillis(), method.trim().ifBlank { "Cash" }))
+        if (amountMinor == remaining) dao.upsertCreditPurchase(credit.copy(closed = true))
     }
 
     suspend fun saveCommittee(name: String, monthlyMinor: Long, total: Int, startMonth: String, payout: Int?, note: String, shares: Int = 1, organizerPhone: String = "", memberSchedule: String = "") {
@@ -173,6 +221,7 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
         dao.loansNow(ownerId).isNotEmpty() || dao.loanPaymentsNow(ownerId).isNotEmpty() ||
         dao.committeesNow(ownerId).isNotEmpty() || dao.committeePaymentsNow(ownerId).isNotEmpty() ||
         dao.committeeReceiptsNow(ownerId).isNotEmpty() || dao.committeeMembersNow(ownerId).isNotEmpty() ||
+        dao.creditPurchasesNow(ownerId).isNotEmpty() || dao.creditPaymentsNow(ownerId).isNotEmpty() ||
         dao.savingsNow(ownerId).isNotEmpty()
 
     suspend fun migrateOwner(oldOwner: String) = db.withTransaction {
@@ -180,6 +229,8 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
             dao.migrateTransactions(oldOwner, ownerId)
             dao.migrateLoans(oldOwner, ownerId)
             dao.migrateLoanPayments(oldOwner, ownerId)
+            dao.migrateCreditPurchases(oldOwner, ownerId)
+            dao.migrateCreditPayments(oldOwner, ownerId)
             dao.migrateCommittees(oldOwner, ownerId)
             dao.migrateCommitteePayments(oldOwner, ownerId)
             dao.migrateCommitteeReceipts(oldOwner, ownerId)
@@ -190,10 +241,12 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
 
     suspend fun exportJson(): String = db.withTransaction {
         fun JSONObject.putNullable(key: String, value: Any?) = apply { if (value == null) put(key, JSONObject.NULL) else put(key, value) }
-        val root = JSONObject().put("version", 3).put("ownerId", ownerId).put("exportedAt", System.currentTimeMillis())
+        val root = JSONObject().put("version", 4).put("ownerId", ownerId).put("exportedAt", System.currentTimeMillis())
         root.put("transactions", JSONArray().apply { dao.transactionsNow(ownerId).sortedBy { ownedId(it.id) }.forEach { x -> put(JSONObject().put("id",ownedId(x.id)).put("type",x.type).put("amountMinor",x.amountMinor).put("category",x.category).put("note",x.note).put("date",x.date).put("createdAt",x.createdAt).put("updatedAt",x.updatedAt)) } })
         root.put("loans", JSONArray().apply { dao.loansNow(ownerId).sortedBy { ownedId(it.id) }.forEach { x -> put(JSONObject().put("id",ownedId(x.id)).put("direction",x.direction).put("person",x.person).put("principalMinor",x.principalMinor).putNullable("dueDate",x.dueDate).put("note",x.note).put("createdAt",x.createdAt).put("closed",x.closed).put("phone",x.phone).put("whatsapp",x.whatsapp)) } })
         root.put("loanPayments", JSONArray().apply { dao.loanPaymentsNow(ownerId).sortedBy { ownedId(it.id) }.forEach { x -> put(JSONObject().put("id",ownedId(x.id)).put("loanId",ownedId(x.loanId)).put("amountMinor",x.amountMinor).put("date",x.date).put("note",x.note).put("createdAt",x.createdAt).put("method",x.method)) } })
+        root.put("creditPurchases", JSONArray().apply { dao.creditPurchasesNow(ownerId).sortedBy { ownedId(it.id) }.forEach { x -> put(JSONObject().put("id",ownedId(x.id)).put("creditor",x.creditor).put("item",x.item).put("amountMinor",x.amountMinor).put("category",x.category).put("purchaseDate",x.purchaseDate).putNullable("dueDate",x.dueDate).put("note",x.note).put("createdAt",x.createdAt).put("closed",x.closed).put("phone",x.phone).put("whatsapp",x.whatsapp)) } })
+        root.put("creditPayments", JSONArray().apply { dao.creditPaymentsNow(ownerId).sortedBy { ownedId(it.id) }.forEach { x -> put(JSONObject().put("id",ownedId(x.id)).put("creditId",ownedId(x.creditId)).put("amountMinor",x.amountMinor).put("date",x.date).put("note",x.note).put("createdAt",x.createdAt).put("method",x.method)) } })
         root.put("committees", JSONArray().apply { dao.committeesNow(ownerId).sortedBy { ownedId(it.id) }.forEach { x -> put(JSONObject().put("id",ownedId(x.id)).put("name",x.name).put("monthlyAmountMinor",x.monthlyAmountMinor).put("totalInstallments",x.totalInstallments).put("startMonth",x.startMonth).putNullable("payoutInstallment",x.payoutInstallment).put("received",x.received).put("shares",x.shares).put("active",x.active).put("note",x.note).put("createdAt",x.createdAt).put("organizerPhone",x.organizerPhone).put("memberSchedule",x.memberSchedule)) } })
         root.put("committeePayments", JSONArray().apply { dao.committeePaymentsNow(ownerId).sortedBy { ownedId(it.id) }.forEach { x -> put(JSONObject().put("id",ownedId(x.id)).put("committeeId",ownedId(x.committeeId)).put("installmentNumber",x.installmentNumber).put("month",x.month).put("amountMinor",x.amountMinor).put("paidAt",x.paidAt).put("method",x.method)) } })
         root.put("committeeReceipts", JSONArray().apply { dao.committeeReceiptsNow(ownerId).sortedBy { ownedId(it.id) }.forEach { x -> put(JSONObject().put("id",ownedId(x.id)).put("committeeId",ownedId(x.committeeId)).put("amountMinor",x.amountMinor).putNullable("date",x.date).put("note",x.note).put("createdAt",x.createdAt).put("method",x.method)) } })
@@ -205,9 +258,12 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
     suspend fun importJson(json: String) = db.withTransaction {
         val root = JSONObject(json)
         val version = root.optInt("version")
-        require(version in 1..3) { "Unsupported backup version. Update the app to restore it." }
+        require(version in 1..4) { "Unsupported backup version. Update the app to restore it." }
         require(version == 1 || root.optJSONArray("committeeReceipts") != null) { "Backup is missing kameti receipts; your local data was not changed." }
         if (version >= 3) require(root.optJSONArray("committeeMembers") != null) { "Backup is missing kameti members; your local data was not changed." }
+        if (version >= 4) {
+            require(root.optJSONArray("creditPurchases") != null && root.optJSONArray("creditPayments") != null) { "Backup is missing udhar records; your local data was not changed." }
+        }
         listOf("transactions", "loans", "loanPayments", "committees", "committeePayments", "savings").forEach {
             require(root.optJSONArray(it) != null) { "Backup is incomplete; your local data was not changed." }
         }
@@ -215,12 +271,16 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
         val tx = root.getJSONArray("transactions")
         val loans = root.getJSONArray("loans")
         val lp = root.getJSONArray("loanPayments")
+        val creditPurchases = if (version >= 4) root.getJSONArray("creditPurchases") else JSONArray()
+        val creditPayments = if (version >= 4) root.getJSONArray("creditPayments") else JSONArray()
         val committees = root.getJSONArray("committees")
         val cp = root.getJSONArray("committeePayments")
         val savings = root.getJSONArray("savings")
 
         dao.clearCommitteeMembers(ownerId)
         dao.clearCommitteeReceipts(ownerId)
+        dao.clearCreditPayments(ownerId)
+        dao.clearCreditPurchases(ownerId)
         dao.clearLoanPayments(ownerId)
         dao.clearCommitteePayments(ownerId)
         dao.clearTransactions(ownerId)
@@ -231,6 +291,22 @@ class LedgerRepository(private val db: AppDatabase, val ownerId: String) {
         dao.insertTransactions(tx.objects().map { o -> TransactionEntity(ownedId(o.getString("id")),ownerId,o.getString("type"),o.getLong("amountMinor"),o.optString("category"),o.optString("note"),o.getString("date"),o.getLong("createdAt"),o.optLong("updatedAt",o.getLong("createdAt"))) })
         dao.insertLoans(loans.objects().map { o -> LoanEntity(ownedId(o.getString("id")),ownerId,o.getString("direction"),o.optString("person"),o.getLong("principalMinor"),o.optString("dueDate").takeIf{it.isNotBlank()&&it!="null"},o.optString("note"),o.getLong("createdAt"),o.optBoolean("closed"),o.optString("phone"),o.optString("whatsapp")) })
         dao.insertLoanPayments(lp.objects().map { o -> LoanPaymentEntity(ownedId(o.getString("id")),ownerId,ownedId(o.getString("loanId")),o.getLong("amountMinor"),o.getString("date"),o.optString("note"),o.getLong("createdAt"),o.optString("method","Cash")) })
+        val restoredCreditPurchases = creditPurchases.objects().map { o -> CreditPurchaseEntity(ownedId(o.getString("id")),ownerId,o.optString("creditor","Unknown shop/person"),o.optString("item","Saman"),o.getLong("amountMinor"),o.optString("category","Other"),o.getString("purchaseDate"),o.optString("dueDate").takeIf{it.isNotBlank()&&it!="null"},o.optString("note"),o.getLong("createdAt"),o.optBoolean("closed"),o.optString("phone"),o.optString("whatsapp")) }
+        require(restoredCreditPurchases.map { it.id }.distinct().size == restoredCreditPurchases.size) { "Duplicate udhar purchases in backup." }
+        restoredCreditPurchases.forEach { c -> CreditDraft(c.creditor, c.item, c.amountMinor, c.category, c.purchaseDate, c.dueDate, c.note, c.phone, c.whatsapp).validated() }
+        dao.insertCreditPurchases(restoredCreditPurchases)
+        val restoredCreditPayments = creditPayments.objects().map { o -> CreditPaymentEntity(ownedId(o.getString("id")),ownerId,ownedId(o.getString("creditId")),o.getLong("amountMinor"),o.getString("date"),o.optString("note"),o.getLong("createdAt"),o.optString("method","Cash")) }
+        require(restoredCreditPayments.map { it.id }.distinct().size == restoredCreditPayments.size) { "Duplicate udhar payments in backup." }
+        restoredCreditPayments.forEach { p -> require(p.amountMinor > 0 && restoredCreditPurchases.any { it.id == p.creditId }); LocalDate.parse(p.date) }
+        restoredCreditPayments.groupBy { it.creditId }.forEach { (creditId, rows) ->
+            val credit = restoredCreditPurchases.first { it.id == creditId }
+            require(rows.fold(0L) { total, payment -> Math.addExact(total, payment.amountMinor) } <= credit.amountMinor) { "Udhar payments exceed the purchase amount in backup." }
+        }
+        dao.insertCreditPayments(restoredCreditPayments)
+        restoredCreditPurchases.forEach { c ->
+            val paid = restoredCreditPayments.filter { it.creditId == c.id }.sumOf { it.amountMinor }
+            dao.upsertCreditPurchase(c.copy(closed = paid >= c.amountMinor))
+        }
         dao.insertCommittees(committees.objects().map { o -> CommitteeEntity(ownedId(o.getString("id")),ownerId,o.optString("name"),o.getLong("monthlyAmountMinor"),o.getInt("totalInstallments"),o.getString("startMonth"),if(o.isNull("payoutInstallment")) null else o.getInt("payoutInstallment"),o.optBoolean("received"),o.optBoolean("active",true),o.optString("note"),o.getLong("createdAt"),o.optInt("shares",1),o.optString("organizerPhone"),o.optString("memberSchedule")) })
         dao.insertCommitteePayments(cp.objects().map { o -> CommitteePaymentEntity(ownedId(o.getString("id")),ownerId,ownedId(o.getString("committeeId")),o.getInt("installmentNumber"),o.getString("month"),o.getLong("amountMinor"),o.getLong("paidAt"),o.optString("method","Cash")) })
         dao.insertSavings(savings.objects().map { o -> SavingEntity(ownedId(o.getString("id")),ownerId,o.getString("kind"),o.getLong("amountMinor"),o.getString("date"),o.optString("note"),o.getLong("createdAt")) })

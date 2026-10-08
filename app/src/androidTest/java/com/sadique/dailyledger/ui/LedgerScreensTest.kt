@@ -40,7 +40,7 @@ class LedgerScreensTest {
         compose.onNodeWithText("Remaining balance").assertIsDisplayed()
         compose.onNodeWithText(money(7000000)).assertIsDisplayed()
         screenshot("dashboard")
-        compose.onNodeWithText("Add salary").performClick()
+        compose.onNodeWithTag("dashboard-add-salary").performClick()
         assertEquals("salary", opened)
         compose.onNodeWithTag("dashboard-list").performScrollToKey("separate-totals");compose.onNodeWithText("Savings total").performScrollTo().performClick()
         assertEquals("savings", opened)

@@ -2,71 +2,38 @@ package com.sadique.dailyledger.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.IconButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.sadique.dailyledger.ai.AiDraftResult
-import com.sadique.dailyledger.ai.AiException
-import com.sadique.dailyledger.ai.AiProtocol
-import com.sadique.dailyledger.data.TransactionDraft
-import com.sadique.dailyledger.data.TransactionEntity
-import com.sadique.dailyledger.ui.money
+import androidx.compose.ui.unit.sp
+import com.sadique.dailyledger.ai.*
+import com.sadique.dailyledger.data.*
+import com.sadique.dailyledger.ui.*
 import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 
 @Composable
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-fun AutoFillScreen(
-    enabled: Boolean,
-    onEnable: () -> Unit,
-    onBack: () -> Unit,
-    generate: suspend (String) -> AiDraftResult,
-    save: suspend (List<TransactionDraft>, String) -> Unit,
-) {
+fun AutoFillScreen(enabled: Boolean, onEnable: () -> Unit, onBack: () -> Unit,
+                   generate: suspend (String) -> AiDraftResult, save: suspend (List<TransactionDraft>, String) -> Unit) {
     val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
     val listState = rememberLazyListState()
@@ -76,227 +43,189 @@ fun AutoFillScreen(
     var busy by remember { mutableStateOf(false) }
     var batch by remember { mutableStateOf(UUID.randomUUID().toString()) }
     var editing by remember { mutableStateOf<Int?>(null) }
+    var manual by remember { mutableStateOf(false) }
+    var manualCategory by remember { mutableStateOf("") }
+    var pickFor by remember { mutableStateOf<Int?>(null) }
+    var allCategories by remember { mutableStateOf(false) }
 
-    LaunchedEffect(entries.isNotEmpty()) {
-        if (entries.isNotEmpty()) listState.animateScrollToItem(3)
-    }
-
+    LaunchedEffect(entries.isNotEmpty()) { if (entries.isNotEmpty()) listState.animateScrollToItem(1) }
     BackHandler { if (!busy) onBack() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("AI Auto Fill") },
-                navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !busy) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-            )
-        },
-    ) { pad ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(pad)
-                .imePadding()
-                .testTag("autofill-list"),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            item {
-                Card(
-                    shape = RoundedCornerShape(28.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    )
-                                )
-                            )
-                            .padding(20.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)) {
-                                Icon(
-                                    Icons.Outlined.AutoAwesome,
-                                    null,
-                                    modifier = Modifier.padding(12.dp).size(26.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                            Text("Write it once. Review every entry.", style = MaterialTheme.typography.headlineSmall)
-                            Text(
-                                "Roman Urdu, Urdu or English. Income and expenses only; savings, loans and kameti use their own tabs.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+    fun prepare() {
+        if (busy || input.isBlank() || entries.isNotEmpty()) return
+        focus.clearFocus(); busy = true; message = ""
+        scope.launch {
+            try {
+                val result = generate(input)
+                entries = result.entries; message = result.message; batch = UUID.randomUUID().toString()
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                message = when (e) {
+                    is AiException, is IllegalArgumentException, is IllegalStateException -> e.message ?: "Could not prepare entries."
+                    else -> "Could not prepare entries. Nothing was saved."
                 }
-            }
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Offline Mini AI is always available", style = MaterialTheme.typography.titleMedium)
-                        Text("Common Roman Urdu/Urdu/English entries are processed on this phone with no API cost. Complex wording can optionally fall back to Cloud AI.")
-                        if (!enabled) TextButton(onClick = onEnable) { Text("Enable optional Cloud AI") }
-                    }
-                }
-            }
-            item(key = "input") {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = input,
-                            onValueChange = { input = it.take(AiProtocol.MAX_INPUT) },
-                            modifier = Modifier.fillMaxWidth().testTag("autofill-input"),
-                            label = { Text("Describe your expenses or income") },
-                            placeholder = { Text("aj doodh 150, sabzi 200, salary 60000") },
-                            minLines = 4,
-                            enabled = !busy && entries.isEmpty(),
-                            supportingText = { Text("${input.length}/${AiProtocol.MAX_INPUT} • Offline first") },
-                        )
-                        Button(
-                            onClick = {
-                                focus.clearFocus(); busy = true; message = ""
-                                scope.launch {
-                                    try {
-                                        val r = generate(input)
-                                        entries = r.entries
-                                        message = r.message
-                                        batch = UUID.randomUUID().toString()
-                                    } catch (e: CancellationException) {
-                                        throw e
-                                    } catch (e: Exception) {
-                                        message = when (e) {
-                                            is AiException, is IllegalArgumentException, is IllegalStateException -> e.message ?: "Could not prepare entries."
-                                            else -> "Could not prepare entries. Nothing was saved."
-                                        }
-                                    } finally {
-                                        busy = false
-                                    }
-                                }
-                            },
-                            enabled = !busy && input.isNotBlank() && entries.isEmpty(),
-                            modifier = Modifier.fillMaxWidth().testTag("autofill-generate"),
-                        ) {
-                            Text(if (busy) "Please wait…" else "Prepare entries")
-                        }
-                        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        if (message.isNotBlank()) {
-                            Text(
-                                message,
-                                modifier = Modifier.testTag("autofill-message"),
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
-                }
-            }
-            if (entries.isNotEmpty()) {
-                item(key = "review-heading") {
-                    Text("Review ${entries.size} entries", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        "Check amount, date and category before saving.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            itemsIndexed(entries, key = { i, _ -> "draft-$i" }) { i, e ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(e.category, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                            Surface(
-                                shape = RoundedCornerShape(999.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                            ) {
-                                Text(e.type, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
-                        Text(money(e.amountMinor), style = MaterialTheme.typography.headlineSmall)
-                        Text(e.date, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (e.note.isNotBlank()) Text(e.note)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilledTonalButton(
-                                onClick = { editing = i },
-                                enabled = !busy,
-                                modifier = Modifier.testTag("draft-edit-$i"),
-                            ) {
-                                Icon(Icons.Outlined.Edit, null, Modifier.size(18.dp))
-                                Spacer(Modifier.size(6.dp))
-                                Text("Edit")
-                            }
-                            TextButton(onClick = { entries = entries.filterIndexed { j, _ -> i != j } }, enabled = !busy) {
-                                Text("Remove")
-                            }
-                        }
-                    }
-                }
-            }
-            if (entries.isNotEmpty()) {
-                item(key = "save-drafts") {
-                    Button(
-                        onClick = {
-                            busy = true
-                            scope.launch {
-                                try {
-                                    val count = entries.size
-                                    save(entries, batch)
-                                    entries = emptyList()
-                                    input = ""
-                                    message = "$count entries saved to your ledger."
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    message = if (e is IllegalArgumentException || e is IllegalStateException) {
-                                        e.message ?: "Could not save entries."
-                                    } else {
-                                        "Could not save entries. Try again."
-                                    }
-                                } finally {
-                                    busy = false
-                                }
-                            }
-                        },
-                        enabled = !busy,
-                        modifier = Modifier.fillMaxWidth().testTag("autofill-save"),
-                    ) { Text("Save reviewed entries") }
-                    TextButton(onClick = { entries = emptyList(); message = "Drafts discarded." }, enabled = !busy) {
-                        Text("Discard drafts")
-                    }
-                }
-            }
-            item { Spacer(Modifier.height(16.dp)) }
+            } finally { busy = false }
         }
     }
 
-    editing?.let { i ->
-        entries.getOrNull(i)?.let { d ->
-            TransactionDialog(
-                x = TransactionEntity("draft", "", d.type, d.amountMinor, d.category, d.note, d.date, 0, 0),
-                dismiss = { editing = null },
-                save = { t, a, c, n, date ->
-                    entries = entries.mapIndexed { j, old -> if (i == j) TransactionDraft(t, a, c, n, date) else old }
-                    editing = null
-                },
-            )
+    LedgerBackdrop(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack, enabled = !busy) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Daily Ledger", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                    Text("Add transaction", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.Rounded.AutoAwesome, null, Modifier.padding(12.dp).size(24.dp), tint = LedgerColors.Purple)
+            }
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().imePadding().testTag("autofill-list"),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item(key = "mode") {
+                    Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = .7f)) {
+                        Row(Modifier.fillMaxWidth().padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            GradientButton("AI Quick Add", {}, Modifier.weight(1f), icon = Icons.Rounded.AutoAwesome)
+                            TextButton(onClick = { manualCategory = ""; manual = true }, enabled = !busy && entries.size < 10, modifier = Modifier.weight(1f).heightIn(min = 50.dp)) {
+                                Icon(Icons.Rounded.Description, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Manual Entry", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+                item(key = "input") {
+                    LedgerCard(Modifier.fillMaxWidth()) {
+                        OutlinedTextField(value = input, onValueChange = { input = it.take(AiProtocol.MAX_INPUT) },
+                            modifier = Modifier.fillMaxWidth().testTag("autofill-input"),
+                            placeholder = { Text("Daal 500, petrol 2000, salary 35000", fontSize = 13.sp) },
+                            label = { Text("Expenses or income", fontSize = 12.sp) },
+                            minLines = 2, maxLines = 5, shape = RoundedCornerShape(14.dp),
+                            enabled = !busy && entries.isEmpty(),
+                            supportingText = { Text("${input.length}/${AiProtocol.MAX_INPUT} • Roman Urdu, Urdu or English", fontSize = 10.sp) })
+                        Spacer(Modifier.height(7.dp))
+                        GradientButton(if (busy) "Preparing…" else "Prepare entries", ::prepare,
+                            Modifier.fillMaxWidth().testTag("autofill-generate"), !busy && input.isNotBlank() && entries.isEmpty(), Icons.AutoMirrored.Rounded.Send)
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+                            GlowIcon(Icons.Rounded.SmartToy, LedgerColors.Purple, size = 32.dp)
+                            Text("Mini AI finds amounts and categories on your phone. Review every entry before saving.", fontSize = 11.sp,
+                                lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 10.dp))
+                        if (message.isNotBlank()) Text(message, Modifier.padding(top = 10.dp).testTag("autofill-message"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                if (entries.isNotEmpty()) item(key = "review-heading") {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Review ${entries.size} entries", fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text("Not saved yet", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                itemsIndexed(entries, key = { i, _ -> "draft-$i" }) { i, entry ->
+                    val visual = categoryVisual(entry.category, entry.type)
+                    LedgerCard(Modifier.fillMaxWidth()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                            GlowIcon(visual.icon, visual.color, size = 43.dp)
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.Top) {
+                                    Column(Modifier.weight(1f).clickable(enabled = !busy) { editing = i }.testTag("draft-edit-$i")) {
+                                        Text(entry.note.ifBlank { entry.category }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(displayMoney(entry.amountMinor), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    IconButton(onClick = { entries = entries.filterIndexed { j, _ -> j != i } }, enabled = !busy, modifier = Modifier.size(36.dp)) {
+                                        Icon(Icons.Rounded.DeleteOutline, "Remove entry ${i + 1}", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = { editing = i }, enabled = !busy, contentPadding = PaddingValues(0.dp)) {
+                                        Icon(Icons.Rounded.CalendarToday, null, Modifier.size(13.dp)); Spacer(Modifier.width(4.dp))
+                                        Text(entry.date, fontSize = 10.sp)
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    TextButton(onClick = { editing = i }, enabled = !busy, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                                        Icon(Icons.Rounded.Edit, null, Modifier.size(13.dp)); Spacer(Modifier.width(3.dp)); Text("Edit", fontSize = 10.sp)
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    DraftChip(entry.category, visual.icon, MaterialTheme.colorScheme.primary, Modifier.weight(1f), !busy) { pickFor = i }
+                                    DraftChip(if (entry.type == "INCOME") "Income" else "Expense", if (entry.type == "INCOME") Icons.Rounded.AddCircle else Icons.Rounded.RemoveCircle,
+                                        if (entry.type == "INCOME") LedgerColors.Green else LedgerColors.Red, Modifier.weight(.85f), !busy) { editing = i }
+                                }
+                            }
+                        }
+                    }
+                }
+                item(key = "manual-draft") {
+                    LedgerCard(Modifier.fillMaxWidth().clickable(enabled = !busy && entries.size < 10) { manualCategory = ""; manual = true }) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            GlowIcon(Icons.Rounded.AddCircle, LedgerColors.Teal, size = 35.dp)
+                            Column {
+                                Text("Add another transaction", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Text(if (entries.size < 10) "Create a draft manually" else "Review this batch of 10 first", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+                item(key = "categories") {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Popular categories", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { allCategories = true }, enabled = !busy && entries.size < 10) { Text("View all", fontSize = 11.sp) }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        listOf("Food", "Transport", "Shopping", "Bills", "Health").forEach { category ->
+                            val visual = categoryVisual(category)
+                            Column(Modifier.clickable(enabled = !busy && entries.size < 10) { manualCategory = category; manual = true }.padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                GlowIcon(visual.icon, visual.color, size = 43.dp)
+                                Text(category, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+                            }
+                        }
+                    }
+                }
+                if (entries.isNotEmpty()) item(key = "save-drafts") {
+                    GradientButton("Review & Save (${entries.size})", onClick = {
+                        busy = true
+                        scope.launch {
+                            try {
+                                val count = entries.size
+                                save(entries, batch)
+                                entries = emptyList(); input = ""; message = "$count entries saved to your ledger."
+                                batch = UUID.randomUUID().toString()
+                                listState.animateScrollToItem(1)
+                            } catch (e: CancellationException) { throw e }
+                            catch (e: Exception) { message = if (e is IllegalArgumentException || e is IllegalStateException) e.message ?: "Could not save entries." else "Could not save entries. Try again." }
+                            finally { busy = false }
+                        }
+                    }, modifier = Modifier.fillMaxWidth().testTag("autofill-save"), enabled = !busy)
+                    TextButton(onClick = { entries = emptyList(); message = "Drafts discarded."; batch = UUID.randomUUID().toString() }, enabled = !busy) { Text("Discard drafts") }
+                }
+                item(key = "offline-details") {
+                    Text("Offline Mini AI is always available", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Income and expenses only. Savings, loans and kameti use their own spaces.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!enabled) TextButton(onClick = onEnable) { Text("Enable optional Cloud AI", fontSize = 11.sp) }
+                }
+            }
+        }
+    }
+    editing?.let { i -> entries.getOrNull(i)?.let { draft ->
+        TransactionDialog(TransactionEntity("draft", "", draft.type, draft.amountMinor, draft.category, draft.note, draft.date, 0, 0),
+            dismiss = { editing = null }, save = { type, amount, category, note, date ->
+                entries = entries.mapIndexed { j, old -> if (i == j) TransactionDraft(type, amount, category, note, date) else old }; editing = null
+            })
+    } }
+    if (manual) TransactionDialog(null, dismiss = { manual = false }, initialCategory = manualCategory, save = { type, amount, category, note, date ->
+        if (entries.size < 10) entries = entries + TransactionDraft(type, amount, category, note, date)
+        manual = false
+    })
+    pickFor?.let { index -> entries.getOrNull(index)?.let { draft ->
+        CategoryPicker(draft.type, onSelect = { category -> entries = entries.mapIndexed { i, old -> if (i == index) old.copy(category = category) else old }; pickFor = null }, onDismiss = { pickFor = null })
+    } }
+    if (allCategories) CategoryPicker("EXPENSE", onSelect = { manualCategory = it; manual = true; allCategories = false }, onDismiss = { allCategories = false })
+}
+
+@Composable
+private fun DraftChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier, enabled: Boolean, action: () -> Unit) {
+    Surface(modifier.clickable(enabled = enabled, onClick = action), shape = RoundedCornerShape(10.dp), color = color.copy(alpha = .09f)) {
+        Row(Modifier.heightIn(min = 38.dp).padding(horizontal = 7.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(icon, null, Modifier.size(14.dp), tint = color)
+            Text(label, Modifier.weight(1f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Icon(Icons.Rounded.ExpandMore, null, Modifier.size(13.dp), tint = color)
         }
     }
 }

@@ -1,0 +1,74 @@
+package com.sadique.dailyledger.ui
+
+import android.os.ParcelFileDescriptor
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.sadique.dailyledger.data.CreditDraft
+import com.sadique.dailyledger.ui.screens.*
+import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class RefreshScreensTest {
+    @get:Rule val compose = createComposeRule()
+    @Test fun creditDraftDateCanBeCorrectedBeforeAnySave() {
+        var saved = emptyList<CreditDraft>()
+        compose.setContent { DailyLedgerTheme("AQUA") { CreditAiDialog({}, { rows, _ -> saved = rows }) } }
+        compose.onNodeWithTag("credit-ai-input").performTextInput("1 Oct 2026 rashan 5000 Aslam Store se udhar, due 15 Oct 2026")
+        compose.onNodeWithTag("credit-ai-prepare").performScrollTo().performClick()
+        assertTrue(saved.isEmpty())
+        compose.onNodeWithTag("credit-ai-list").performScrollToKey("credit-0")
+        compose.onNodeWithTag("credit-edit-0").performScrollTo().performClick()
+        compose.onNodeWithText("Purchase date YYYY-MM-DD").performScrollTo().performTextReplacement("2026-10-02")
+        compose.onNodeWithText("Save", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("credit-ai-list").performScrollToKey("credit-0")
+        compose.onNodeWithText("Purchase 2026-10-02").assertIsDisplayed()
+        shot("udhar-review")
+        compose.onNodeWithTag("credit-ai-save").performClick()
+        compose.waitForIdle()
+        assertEquals("2026-10-02", saved.single().purchaseDate)
+        assertEquals("2026-10-15", saved.single().dueDate)
+    }
+    @Test fun backupCardNeverCallsAnUnverifiedBackupSuccessfulAndActionsWork() {
+        var action = ""
+        compose.setContent { DailyLedgerTheme("AQUA") { LedgerBackdrop {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                LedgerBrandHeader("Settings & backup")
+                AccountBackupCard(true, false, "", "", false, {}, { action = "restore" }, { action = "details" })
+                PersonalizationCard(true, true, "Okara", {}, {}, { action = "location" }, {})
+                SavingsSettingsCard(0) { action = "savings" }
+                EncryptionBanner()
+            }
+        } } }
+        compose.onNodeWithText("Awaiting first backup").assertIsDisplayed()
+        compose.onNodeWithText("Backup available").assertDoesNotExist()
+        compose.onNodeWithText("Restore data").performClick()
+        assertEquals("restore", action)
+        shot("aqua-settings")
+        compose.onNodeWithText("Change").performScrollTo().performClick()
+        assertEquals("location", action)
+        compose.onNodeWithText("View savings").performScrollTo().performClick()
+        assertEquals("savings", action)
+    }
+    @Test fun udharAndOtherLedgersRemainAccessibleFromMore() {
+        var action = ""
+        compose.setContent { DailyLedgerTheme("AQUA") { MoreScreen({}, {}, {}, {}, {}, { action = "credit" }) } }
+        compose.onNodeWithText("Udhar Saman").performScrollTo().performClick()
+        assertEquals("credit", action)
+        shot("aqua-more")
+    }
+    private fun shot(name: String) {
+        compose.waitForIdle()
+        val fd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /data/local/tmp/dailyledger-$name.png")
+        ParcelFileDescriptor.AutoCloseInputStream(fd).use { it.readBytes() }
+    }
+}

@@ -8,9 +8,7 @@ import java.time.YearMonth
 import java.util.Currency
 import java.util.Locale
 
-fun money(minor: Long): String = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("PK").build()).apply {
-    currency = Currency.getInstance("PKR")
-}.format(minor / 100.0)
+fun money(minor: Long): String = displayMoney(minor)
 
 /** Parses user text such as "1,250.50" into integer paisa. Returns null for invalid input. */
 fun parseMinor(text: String): Long? = runCatching {

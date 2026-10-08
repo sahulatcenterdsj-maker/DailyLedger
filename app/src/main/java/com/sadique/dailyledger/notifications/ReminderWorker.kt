@@ -21,6 +21,7 @@ class ReminderWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
         val committees = dao.committeesNow(user.id)
         val committeePayments = dao.committeePaymentsNow(user.id)
         val committeeMembers = dao.committeeMembersNow(user.id)
+        val creditPurchases = dao.creditPurchasesNow(user.id)
         val transactions = dao.transactionsNow(user.id)
         val today = LocalDate.now()
 
@@ -32,6 +33,9 @@ class ReminderWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
             } == true
         }
 
+        val dueCredits = creditPurchases.count { !it.closed && it.dueDate?.let { date ->
+            runCatching { LocalDate.parse(date) }.getOrNull()?.let { !it.isAfter(today.plusDays(3)) }
+        } == true }
         val currentMonth = YearMonth.now()
         val committeeDue = committees.count { committee ->
             if (!committee.active) return@count false
@@ -47,6 +51,7 @@ class ReminderWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(c
         val myTurnsNextMonth = committeeMembers.count { it.ownerId == user.id && it.isMe && !it.received && it.turnMonth == currentMonth.plusMonths(1).toString() }
 
         val messages = mutableListOf<String>()
+        if (dueCredits > 0) messages += "$dueCredits udhar payment due"
         if (dueLoans > 0) messages += "$dueLoans loan due soon"
         if (committeeDue > 0) messages += "$committeeDue kameti payment due"
         if (myTurnsThisMonth > 0) messages += "Your kameti turn is this month"

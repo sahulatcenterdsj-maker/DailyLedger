@@ -23,7 +23,7 @@ internal object AiFailures {
             has { it is FirebaseAuthException } || stage == AiStage.SIGN_IN ->
                 "Firebase could not verify your sign-in. Please sign in again. [AI_SIGN_IN]"
             stage == AiStage.APP_CHECK ->
-                "Firebase could not verify this app/device. The app owner must check App Check setup; use an updated, Play Protect-certified phone. [AI_APP_CHECK]"
+                "App verification failed. Open Settings → Check app verification. The owner must match Firebase App Check to this APK; this error alone does not mean your phone is uncertified. [AI_APP_CHECK]"
             has { it is APINotConfiguredException || it is ServiceDisabledException } ->
                 "Firebase AI Logic is not enabled for this app yet. The app owner must finish Gemini Developer API setup. [AI_SETUP]"
             has { it is InvalidAPIKeyException } ->

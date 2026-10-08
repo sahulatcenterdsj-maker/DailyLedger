@@ -19,8 +19,10 @@ import com.sadique.dailyledger.security.EncryptedOpenHelperFactory
         CommitteeReceiptEntity::class,
         CommitteeMemberEntity::class,
         SavingEntity::class,
+        CreditPurchaseEntity::class,
+        CreditPaymentEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -77,6 +79,52 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS credit_purchases (
+                        id TEXT NOT NULL,
+                        ownerId TEXT NOT NULL,
+                        creditor TEXT NOT NULL,
+                        item TEXT NOT NULL,
+                        amountMinor INTEGER NOT NULL,
+                        category TEXT NOT NULL,
+                        purchaseDate TEXT NOT NULL,
+                        dueDate TEXT,
+                        note TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        closed INTEGER NOT NULL DEFAULT 0,
+                        phone TEXT NOT NULL DEFAULT '',
+                        whatsapp TEXT NOT NULL DEFAULT '',
+                        PRIMARY KEY(id)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_credit_purchases_ownerId ON credit_purchases(ownerId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_credit_purchases_purchaseDate ON credit_purchases(purchaseDate)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_credit_purchases_dueDate ON credit_purchases(dueDate)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS credit_payments (
+                        id TEXT NOT NULL,
+                        ownerId TEXT NOT NULL,
+                        creditId TEXT NOT NULL,
+                        amountMinor INTEGER NOT NULL,
+                        date TEXT NOT NULL,
+                        note TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        method TEXT NOT NULL DEFAULT 'Cash',
+                        PRIMARY KEY(id)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_credit_payments_ownerId ON credit_payments(ownerId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_credit_payments_creditId ON credit_payments(creditId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_credit_payments_date ON credit_payments(date)")
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
 
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
@@ -86,7 +134,7 @@ abstract class AppDatabase : RoomDatabase() {
                 DatabaseEncryption.migrate(file, password)
                 Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "daily-ledger.db")
                     .openHelperFactory(EncryptedOpenHelperFactory(password))
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build().also { INSTANCE = it }
             }
         }

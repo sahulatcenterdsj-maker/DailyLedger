@@ -12,6 +12,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.sadique.dailyledger.ui.*
+import com.sadique.dailyledger.audio.TransactionSoundPlayer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,6 +61,7 @@ fun SettingsScreen(
     onWeatherEnabled: (Boolean) -> Unit,
     onTransactionSounds: (Boolean) -> Unit,
     onLogout: () -> Unit,
+    onOpenSavings: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val aiEnabled by vm.aiEnabled.collectAsState()
@@ -80,6 +86,14 @@ fun SettingsScreen(
     var pendingDriveAction by remember { mutableStateOf("UPLOAD") }
     var cityInput by remember(weatherCity) { mutableStateOf(weatherCity) }
     val settingsStore = remember { SettingsStore(context.applicationContext) }
+    val savings by vm.savings.collectAsState()
+    var backupReady by remember(user.id) { mutableStateOf(false) }
+    var backupDetails by remember { mutableStateOf(false) }
+    var cityEditor by remember { mutableStateOf(false) }
+    LaunchedEffect(user.id, lastCloudSync, cloudStatus) {
+        val state = settingsStore.cloudState(user.id)
+        backupReady = state.ready && state.revision.isNotBlank()
+    }
 
     fun cloud(action: String) {
         if (busy) return
@@ -200,6 +214,7 @@ fun SettingsScreen(
         )
     }
 
+    LedgerBackdrop(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -211,10 +226,45 @@ fun SettingsScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, enabled = !busy) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-            Text("Settings", style = MaterialTheme.typography.headlineMedium)
+            LedgerLogo(34.dp)
+            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                Text("Daily Ledger", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                Text("Your account & preferences", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        Text(user.name, style = MaterialTheme.typography.titleLarge)
-        Text(user.email, style = MaterialTheme.typography.bodyMedium)
+
+        AccountBackupCard(cloudEnabled, backupReady, if (lastCloudSync > 0) formatTime(lastCloudSync) else "Not yet checked",
+            cloudStatus, busy, onCloudEnabled, { confirmation = "CLOUD_RESTORE" }, { backupDetails = !backupDetails })
+        if (backupDetails) SectionCard("Backup details", "Same-account recovery · no extra backup passphrase") {
+            Text("Encrypted backups can be recovered by authorized backend administrators. A successful backup is required for restore.", style = MaterialTheme.typography.bodySmall)
+            Text("Android may delay automatic background work. You can check and back up now.", style = MaterialTheme.typography.bodySmall)
+            GradientButton("Back up now", { cloud("SYNC") }, Modifier.fillMaxWidth(), !busy, Icons.Rounded.CloudUpload)
+            TextButton(onClick = { confirmation = "CLOUD_REPLACE" }, enabled = !busy) { Text("Replace backup with this phone's data") }
+            TextButton(onClick = { confirmation = "CLOUD_DELETE" }, enabled = !busy) { Text("Delete cloud backup", color = MaterialTheme.colorScheme.error) }
+        }
+
+        PersonalizationCard(transactionSounds, weatherEnabled, weatherCity, onTransactionSounds, onWeatherEnabled,
+            { cityEditor = !cityEditor }, { TransactionSoundPlayer.playBatchSuccess(context) })
+        if (cityEditor) SectionCard("Weather location", "Choose your city. No GPS permission is needed.") {
+            OutlinedTextField(cityInput, { cityInput = it }, label = { Text("City") }, placeholder = { Text("Gujranwala, Pakistan") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            if (weatherTemperature.isNotBlank()) Text("$weatherTemperature · $weatherCondition", style = MaterialTheme.typography.bodySmall)
+            Button(onClick = {
+                busy = true; message = null
+                scope.launch {
+                    try {
+                        settingsStore.setWeatherCity(cityInput)
+                        val weather = WeatherService().currentForCity(cityInput)
+                        settingsStore.setWeatherSnapshot(weather.city, weather.temperature, weather.condition, weather.fetchedAt)
+                        cityInput = weather.city; message = "Weather updated for ${weather.city}."; cityEditor = false
+                    } catch (e: CancellationException) { throw e }
+                    catch (e: Exception) { message = e.message ?: "Could not update weather. Try again when online." }
+                    finally { busy = false }
+                }
+            }, enabled = !busy && cityInput.trim().length >= 2) { Text("Save city & refresh weather") }
+            Text("Weather data by Open-Meteo.", style = MaterialTheme.typography.bodySmall)
+        }
+        SavingsSettingsCard(savings.sumOf { it.amountMinor }, onOpenSavings)
+        EncryptionBanner()
 
         if (offlineProfiles.isNotEmpty()) {
             SectionCard("Previous offline data", "Choose an old profile on this phone to add its records to this account.") {
@@ -223,36 +273,6 @@ fun SettingsScreen(
                         Text("Import profile ${index + 1} (${profile.records} records)")
                     }
                 }
-            }
-        }
-
-        SectionCard("Account backup", "Saved to your signed-in account. Use the same login on a new phone to recover your records.") {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Column(Modifier.weight(1f)) {
-                    Text("Automatic backup")
-                    Text("Same-account recovery • no backup passphrase", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(cloudEnabled, onCheckedChange = onCloudEnabled, enabled = !busy)
-            }
-            StatusBadge(if (cloudEnabled) "Automatic backup enabled" else "Automatic backup disabled", cloudEnabled)
-            Text(cloudStatus, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                if (lastCloudSync > 0) "Last successful check: ${formatTime(lastCloudSync)}" else "No successful account backup yet.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                "Backups run after changes when internet is available. Android may delay background work.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { cloud("SYNC") }, enabled = !busy) { Text("Back up now") }
-                OutlinedButton(onClick = { confirmation = "CLOUD_RESTORE" }, enabled = !busy) { Text("Restore") }
-            }
-            TextButton(onClick = { confirmation = "CLOUD_REPLACE" }, enabled = !busy) {
-                Text("Replace backup with this phone's data")
-            }
-            TextButton(onClick = { confirmation = "CLOUD_DELETE" }, enabled = !busy) {
-                Text("Delete cloud backup", color = MaterialTheme.colorScheme.error)
             }
         }
 
@@ -300,67 +320,7 @@ fun SettingsScreen(
             }
         }
 
-        SectionCard("Dashboard experience", "Selected-city weather and soft retro transaction feedback.") {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Column(Modifier.weight(1f)) {
-                    Text("Weather on Home")
-                    Text("Manual city • no GPS permission", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(weatherEnabled, onCheckedChange = onWeatherEnabled)
-            }
-            if (weatherEnabled) {
-                OutlinedTextField(
-                    value = cityInput,
-                    onValueChange = { cityInput = it },
-                    label = { Text("City") },
-                    placeholder = { Text("Gujranwala, Pakistan") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                if (weatherTemperature.isNotBlank() || weatherCondition.isNotBlank()) {
-                    StatusBadge(
-                        listOf(weatherCity, weatherTemperature, weatherCondition).filter { it.isNotBlank() }.joinToString(" • "),
-                        true,
-                    )
-                    if (weatherUpdatedAt > 0L) {
-                        Text("Updated ${formatTime(weatherUpdatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                Button(
-                    onClick = {
-                        busy = true
-                        message = null
-                        scope.launch {
-                            try {
-                                settingsStore.setWeatherCity(cityInput)
-                                val weather = WeatherService().currentForCity(cityInput)
-                                settingsStore.setWeatherSnapshot(weather.city, weather.temperature, weather.condition, weather.fetchedAt)
-                                cityInput = weather.city
-                                message = "Weather updated for ${weather.city}."
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                message = e.message ?: "Could not update weather. Try again when you are online."
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
-                    enabled = !busy && cityInput.trim().length >= 2,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Save city & refresh weather") }
-                Text("Weather data by Open-Meteo. The app refreshes cached weather periodically while online.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            HorizontalDivider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Column(Modifier.weight(1f)) {
-                    Text("Transaction sounds")
-                    Text("Sound style: Retro Soft", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(transactionSounds, onCheckedChange = onTransactionSounds)
-            }
-            Text("Income, expense and AI batch saves use short custom retro tones when this is enabled.", style = MaterialTheme.typography.bodySmall)
-        }
+        AppVerificationCard(context)
 
         SectionCard("Appearance", null) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -392,7 +352,10 @@ fun SettingsScreen(
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         Spacer(Modifier.height(8.dp))
+        Text(user.name, style = MaterialTheme.typography.titleMedium)
+        Text(user.email, style = MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick = onLogout, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
+    }
     }
 }
 
@@ -400,7 +363,7 @@ fun SettingsScreen(
 private fun SectionCard(title: String, subtitle: String?, content: @Composable ColumnScope.() -> Unit) {
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = {
             Text(title, style = MaterialTheme.typography.titleLarge)

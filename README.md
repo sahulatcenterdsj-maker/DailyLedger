@@ -1,6 +1,6 @@
 # Daily Ledger
 
-A native Android personal-finance app for PKR income, spending, savings, loans and kameti. Version **1.5.1** combines the uploaded Offline Mini AI, loan contacts and kameti turns with the reviewed encryption and backup fixes.
+A native Android personal-finance app for PKR income, spending, savings, loans and kameti. Version **1.6.1** integrates the handoff’s Udhar Saman ledger and expanded categories with the encrypted database, protected backups and refreshed aqua interface.
 
 - Salary minus monthly expenses; savings and kameti have separate totals.
 - Multiple kameti shares, partial receiving, structured member turns, contact actions and reminders.
@@ -8,7 +8,10 @@ A native Android personal-finance app for PKR income, spending, savings, loans a
 - Google/email sign-in using Firebase Authentication.
 - Offline Mini AI: reviewed Roman Urdu/Urdu/English quick entry and local spending/saving suggestions. Common entries require no internet, model download or paid API. It is a small rules engine, not an LLM.
 - Optional Firebase Gemini fallback for complex wording; separate consent required. No AI chat and no automatic saving of generated entries.
-- 93 built-in income/expense categories; a wallet icon for savings.
+- 105 built-in income/expense categories; a wallet icon for savings and a green bar-chart launcher icon.
+- Separate **Udhar Saman** ledger: goods bought on credit, shops/contacts, due dates, partial payments and editable offline auto-fill.
+- Dated quick entry: `1 Oct 2026 doodh 150, 2 Oct 2026 petrol 1,500` prepares two entries on those exact dates. ISO and DD/MM/YYYY are supported; omitted years use the current year and omitted dates use today. Invalid dates and ambiguous `kal` request correction.
+- Review/edit every date, amount and category before saving. Repeated purchases are retained; retries do not duplicate a saved batch.
 - SQLCipher-encrypted local ledger; existing records migrate without a destructive database reset.
 - AES-256-GCM account backups, with same-account recovery and no extra backup passphrase through authenticated Functions + Cloud KMS.
 - Explicit Restore / Skip on a new phone; conflicting phone revisions require a choice.
@@ -31,12 +34,20 @@ bash tests/run-core-tests.sh
 npm --prefix functions test
 npm install
 npm test
-./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest
+./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest assembleRelease
 ./gradlew connectedDebugAndroidTest
 ```
 
-GitHub Actions builds and verifies the APK and publishes its test reports. Install an update over the existing app; do not clear its data to update. The fixed development signer preserves update compatibility, but is not suitable as a private production signing identity.
+GitHub Actions builds and verifies the non-debuggable release APK and publishes its test reports. Install an update over the existing app; do not clear its data to update. The fixed development signer preserves update compatibility, but is not suitable as a private production signing identity.
 
-## Verified APK update
+## Integration status
+
+Cloud AI uses **Firebase AI Logic + Gemini**, authenticated through the existing Firebase project. This Android version does not call the old Cloudflare/Groq worker; legacy worker source is retained for older clients. Firebase Authentication handles sign-in, and the optional backup backend uses Firestore metadata, Storage ciphertext, authenticated Cloud Functions and Cloud KMS. AI activation and backup activation are separate.
+
+`AI_APP_CHECK` identifies an app-attestation failure, not proof that a phone is uncertified. Release builds use Play Integrity. Private `debug` builds use individually registered test tokens and must not be distributed. Use **Settings → Check app verification**, then confirm Firebase registration, the actual signing SHA-256 and outside-Play settings. Never add a universal debug token or disable server enforcement to make AI appear to work.
+
+Source/CI checks do not prove a successful request to the live Firebase project. App Check/AI activation and KMS cloud recovery require a signed-in project owner to complete the console setup. This revision's Android verification results are recorded in TESTING.md when the build finishes.
+
+## Previous verified APK
 
 Version **1.5.1** (code **7**) passed [CI and Android device tests](https://github.com/sahulatcenterdsj-maker/DailyLedger/actions/runs/37652728165): 40 unit tests, 16 Android tests, Firebase rules, Function handlers and backup-core checks. The signed APK keeps the earlier package/certificate for in-place updates. See [test results and checksum](TESTING.md). Live optional cloud services still need the owner setup described above.

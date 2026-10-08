@@ -62,7 +62,7 @@ class SettingsStore(private val context: Context) {
         val id = p[K.userId].orEmpty()
         AppSettings(
             user = profile(p),
-            theme = p[K.theme] ?: "SYSTEM",
+            theme = p[K.theme] ?: "AQUA",
             biometric = p[K.biometric] ?: false,
             driveEnabled = p[drive(id)] ?: false,
             lastSync = p[driveTime(id)] ?: 0L,

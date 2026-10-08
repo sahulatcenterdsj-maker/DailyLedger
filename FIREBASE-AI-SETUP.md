@@ -1,4 +1,4 @@
-# Firebase AI setup — Daily Ledger 1.4.1
+# Firebase AI setup — Daily Ledger 1.6.1
 
 This version uses the official Firebase AI Logic Android SDK with the **Gemini Developer API**. Cloud Functions, Groq keys and Cloudflare are not required by the new app. Features remain automatic spending suggestions and reviewed Auto Fill, with no AI chat.
 
@@ -6,7 +6,7 @@ This version uses the official Firebase AI Logic Android SDK with the **Gemini D
 
 - Firebase project: `daily-ledger-4d8ef`
 - Android package: `com.sadique.dailyledger`
-- Version: `1.4.1`, version code `5`
+- Version: `1.6.1`, version code `9`
 - Model: `gemini-3.5-flash-lite` (stable, free-tier eligible in current official docs, checked 2026-10-07)
 - Existing signing certificate SHA-256: `4C:22:14:C4:D4:B6:E3:8B:FA:81:44:F1:41:CC:24:A7:18:00:3F:55:20:41:06:17:76:6D:19:5C:CD:2D:23:1D`
 
@@ -62,3 +62,11 @@ The current APK preserves the development signing identity to update existing in
 ## This project also uses KMS backup
 
 KMS/Functions/Storage requires Blaze. Linking billing changes Gemini pricing too: AI is not guaranteed free on that project. Confirm the cost decision before enabling that backend. The APK uses `gemini-3.5-flash-lite`; app limits are per device and do not replace server quotas.
+
+## v1.6.1 build variants and diagnosis
+
+The downloadable APK is `assembleRelease`, non-debuggable, and contains only the Play Integrity provider. Its existing certificate is retained for upgrades. `assembleDebug` is private testing only and contains Firebase's debug provider: every installation needs its own console-registered token. Never share a token in an APK, repository, report or public log.
+
+Settings → Check app verification forces a fresh App Check token request without sending ledger entries. Success confirms attestation only; model activation/quota can still fail separately. App details show the installed package, version, provider and public signing SHA-256. Compare that fingerprint with Security → App Check → Apps and Project settings → Your apps. Keep production enforcement active.
+
+For the directly installed release APK, use the official outside-Google-Play profile: PLAY_RECOGNIZED not required, LICENSED not required, and minimum Device integrity. This still verifies device integrity. Confirm the linked Cloud project/Play Integrity API and registration before changing settings. A Play-distributed app needs its corresponding profile. Updating the APK cannot silently alter those project settings.

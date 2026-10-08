@@ -50,8 +50,13 @@ class AiService(private val context: Context, private val owner: String) {
 
     suspend fun drafts(input: String): AiDraftResult {
         require(input.isNotBlank() && input.length <= AiProtocol.MAX_INPUT)
+        val dates = EntryDateParser.extract(EntryText.normalize(input), LocalDate.now()).map { it.date.toString() }.toSet()
         val request = AiPrompts.drafts(input, LocalDate.now(), CategoryCatalog.load(context))
-        return AiProtocol.decodeDrafts(call(request))
+        val result = CategoryRules.normalizeResult(AiProtocol.decodeDrafts(call(request)))
+        if (dates.isNotEmpty() && result.entries.any { it.date !in dates }) {
+            throw AiException("AI did not preserve the dates you supplied. Nothing was saved. Please separate the entries or enter them manually.")
+        }
+        return result
     }
 
     suspend fun insights(snapshot: SpendingSnapshot): List<SpendingTip> {

@@ -29,6 +29,8 @@ class MainViewModel(app:Application,val ownerId:String):AndroidViewModel(app){
         migrateOwner(oldOwner)
     }
     val transactions=repo.transactions.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
+    val creditPurchases=repo.creditPurchases.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
+    val creditPayments=repo.creditPayments.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val loans=repo.loans.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val loanPayments=repo.loanPayments.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
     val committees=repo.committees.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),emptyList())
@@ -79,11 +81,13 @@ class MainViewModel(app:Application,val ownerId:String):AndroidViewModel(app){
     }
     suspend fun autoFill(input:String):AiDraftResult{
         checkAccount()
-        require(!OfflineMiniAi.usesDedicatedLedger(input)) { "Loans, savings aur kameti apne tabs mein record karein. Auto Fill sirf income aur expenses ke liye hai." }
+        require(!OfflineMiniAi.usesDedicatedLedger(input)) { "Udhar Saman, loans, savings aur kameti apne tabs mein record karein. Auto Fill sirf income aur expenses ke liye hai." }
         OfflineMiniAi.drafts(input)?.let { return it }
         check(aiEnabled.value){"Offline Mini AI could not understand this entry. Enable Cloud AI for complex wording, or enter amount more clearly."}
         val result=aiService.drafts(input);checkAccount();return result
     }
     suspend fun saveAiDrafts(drafts:List<TransactionDraft>,batchId:String){BackupLock.mutex.withLock{checkAccount();repo.saveDraftBatch(drafts,batchId)};runCatching{SyncScheduler.syncNow(getApplication<Application>())}}
+    suspend fun saveCreditDrafts(drafts:List<CreditDraft>,batchId:String){BackupLock.mutex.withLock{checkAccount();repo.saveCreditDrafts(drafts,batchId)};runCatching{SyncScheduler.syncNow(getApplication<Application>())}}
+    suspend fun saveCreditPayment(id:String,amount:Long,date:String,note:String,method:String){BackupLock.mutex.withLock{checkAccount();repo.addCreditPayment(id,amount,date,note,method)};runCatching{SyncScheduler.syncNow(getApplication<Application>())}}
     class Factory(private val app:Application,private val owner:String):ViewModelProvider.Factory{override fun <T:ViewModel> create(modelClass:Class<T>):T=MainViewModel(app,owner) as T}
 }

@@ -76,7 +76,7 @@ class MainActivity : FragmentActivity() {
                 if (current != null) unlocked = !current.biometric
             }
 
-            DailyLedgerTheme(current?.theme ?: "SYSTEM") {
+            DailyLedgerTheme(current?.theme ?: "AQUA") {
                 Surface(Modifier.fillMaxSize()) {
                     when {
                         storageError -> Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp)) {

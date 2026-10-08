@@ -118,3 +118,32 @@ data class SavingEntity(
     val note: String,
     val createdAt: Long,
 )
+
+@Entity(tableName = "credit_purchases", indices = [Index("ownerId"), Index("purchaseDate"), Index("dueDate")])
+data class CreditPurchaseEntity(
+    @PrimaryKey val id: String,
+    val ownerId: String,
+    val creditor: String,
+    val item: String,
+    val amountMinor: Long,
+    val category: String,
+    val purchaseDate: String,
+    val dueDate: String?,
+    val note: String,
+    val createdAt: Long,
+    @ColumnInfo(defaultValue = "0") val closed: Boolean = false,
+    @ColumnInfo(defaultValue = "''") val phone: String = "",
+    @ColumnInfo(defaultValue = "''") val whatsapp: String = "",
+)
+
+@Entity(tableName = "credit_payments", indices = [Index("ownerId"), Index("creditId"), Index("date")])
+data class CreditPaymentEntity(
+    @PrimaryKey val id: String,
+    val ownerId: String,
+    val creditId: String,
+    val amountMinor: Long,
+    val date: String,
+    val note: String,
+    val createdAt: Long,
+    @ColumnInfo(defaultValue = "'Cash'") val method: String = "Cash",
+)

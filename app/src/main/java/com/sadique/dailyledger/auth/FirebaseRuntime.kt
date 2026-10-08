@@ -5,7 +5,6 @@ import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
-import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
@@ -28,7 +27,8 @@ object FirebaseRuntime {
 
     @Synchronized fun initAppCheck(context: Context) {
         if (!configured(context) || appCheckInitialized) return
-        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
+        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProvider())
+        FirebaseAppCheck.getInstance().setTokenAutoRefreshEnabled(true)
         appCheckInitialized = true
     }
 

@@ -58,7 +58,7 @@ jobs:
         run: bash tests/run-core-tests.sh
 
       - name: Build and unit test APK
-        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest assembleRelease
 
       - name: Enable emulator acceleration
         run: |
@@ -91,7 +91,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import hashlib, os, pathlib, re, shutil, subprocess
-          apk = pathlib.Path('app/build/outputs/apk/debug/app-debug.apk')
+          apk = pathlib.Path('app/build/outputs/apk/release/app-release.apk')
           assert apk.is_file(), 'APK was not produced'
           sdk = pathlib.Path(os.environ['ANDROID_HOME'])
           versions = sorted((sdk / 'build-tools').glob('*'), key=lambda p: [int(n) for n in re.findall(r'\d+', p.name)])
@@ -101,6 +101,12 @@ jobs:
           assert expected_sha1 in signature.lower().replace(':', ''), 'Signing certificate differs from Firebase configuration'
           badging = subprocess.check_output([str(build_tools / 'aapt'), 'dump', 'badging', str(apk)], text=True)
           assert "package: name='com.sadique.dailyledger'" in badging, 'Unexpected application ID'
+          assert 'application-debuggable' not in badging, 'Distributed APK must not be debuggable'
+          import zipfile
+          with zipfile.ZipFile(apk) as archive:
+              dex = b''.join(archive.read(n) for n in archive.namelist() if n.endswith('.dex'))
+              assert b'Lcom/google/firebase/appcheck/debug/DebugAppCheckProviderFactory;' not in dex, 'Debug attestation provider leaked into release'
+              assert b'Lcom/google/firebase/appcheck/playintegrity/PlayIntegrityAppCheckProviderFactory;' in dex, 'Release attestation provider missing' 
           output = pathlib.Path('apk-output')
           output.mkdir(exist_ok=True)
           target = output / 'DailyLedger.apk'
